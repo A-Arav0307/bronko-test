@@ -1,11 +1,13 @@
+# bronko - ultra-rapid alignment-free viral variant calling
+
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/treangenlab/bronko/rust.yml) ![GitHub License](https://img.shields.io/github/license/treangenlab/bronko) ![Conda Downloads](https://img.shields.io/conda/d/bioconda/bronko)
 
-# bronko - ultra-rapid mapping free viral variant calling
+<img src="https://github.com/treangenlab/bronko/blob/main/img/bronko_logo.png" alt="drawing" width="400"/>
 
 ## Introduction
 **bronko** is a viral variant caller that can rapidly detect most major and minor variants in any given sequencing dataset. bronko bypasses read mapping and variant calling and directly outputs a VCF from a set of reads and reference genome(s).  
 
-bronko also allows users to run multiple samples of the same species and build an alignment that can be inputted directly into phylogenetics software
+bronko also allows users to run multiple samples of the same species and build a multiple sequence alignment that can be inputted directly into phylogenetics software
 
 ### Why use bronko over existing viral variant callers?
 1. **Simplicity** -- bronko bypasses most steps of typical variant calling (indexing, read mapping, sam manipulation, variant calling, alignment, etc) and packages everything into 1-2 commands
