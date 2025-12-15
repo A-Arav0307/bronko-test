@@ -81,7 +81,7 @@ Note: Keep single end reads in the -r and paired in the -1/-2. If the number of 
 If you do not want to use a pre-built database, you can replace `-d` with `-g` and provide genomes in fasta format. This will still build a database, but not save it. If you are using a single genome, this may be sufficient.
 
 #### Other Parameters
-There are many parameters that can be used to play with the stringency of variant calling. See the wiki here for a description.
+There are several parameters that can be adjusted to fine-tune the stringency of variant calling. Refer to the wiki [here](https://github.com/treangenlab/bronko/wiki/Command-Parameters) for a comprehensive description of each parameter and its impact on downstream results when manipulated. 
 
 ## Issues
 bronko is still in early versions and we welcome any feedback, suggestions, or feature requests. If you run into any issues, please email Ryan Doughty at rdd4@rice.edu or raise an issue on github
