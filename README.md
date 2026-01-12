@@ -87,3 +87,10 @@ There are several parameters that can be adjusted to fine-tune the stringency of
 
 ## Issues
 bronko is still in early versions and we welcome any feedback, suggestions, or feature requests. If you run into any issues, please email Ryan Doughty at rdd4@rice.edu or raise an issue on github
+
+## Citation
+> [!NOTE]
+> **Citation:** If you use bronko in your research, please cite: 
+> 
+> **Ryan D. Doughty, Michael J. Tisza, Todd J. Treangen** ["bronko: ultrafast, alignment-free detection of viral genome variation"](https://doi.org/10.64898/2025.12.01.691650). *bioRxiv* (2025).
+
