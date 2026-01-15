@@ -151,6 +151,9 @@ pub struct CallArgs {
     #[clap(long="keep-kmer-info", default_value_t = DEFAULT_KEEP_KMER_INFO, help_heading="EXTRA OUTPUT FILES", help="Keep kmer count information and temporary files (deleted by default)")]
     pub keep_kmer_counts: bool, 
 
+    #[clap(long="consensus", default_value_t = DEFAULT_CONSENSUS, help_heading="EXTRA OUTPUT FILES", help="Return consensus sequences for each virus (.fasta format)")]
+    pub output_consensus: bool,
+
     // OTHER PARAMETERS
     //Number of threads
     #[clap(short, long="threads", default_value_t=4, help="Number of threads")]
