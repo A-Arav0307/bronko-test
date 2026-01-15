@@ -272,6 +272,12 @@ pub fn call(args: CallArgs) {
             if args.output_pileup {
                 print_pileup(&se_read, &args, &output, &output_rev, &viral_metadata, &best_genome_index);
             }
+
+            //print consensus
+            if args.output_consensus{
+                print_consensus(&se_read, &args, &output, &output_rev, &viral_metadata, &best_genome_index);
+            }
+
             print_output(&se_read, &args, &variants, &viral_metadata, &best_genome_index);
 
             output_info.push(OutputInfo {
@@ -287,9 +293,8 @@ pub fn call(args: CallArgs) {
             });
             variant_info.push((se_read.to_string(), variants));
 
-            if !args.keep_kmer_counts {
-                cleanup_kmc_files(&args.output);
-            }
+            cleanup_kmc_files(&args.output, &args.keep_kmer_counts);
+
         }
     }
 
@@ -364,6 +369,12 @@ pub fn call(args: CallArgs) {
             if args.output_pileup {
                 print_pileup(&r1, &args, &output, &output_rev, &viral_metadata, &best_genome_index);
             }
+
+            //print consensus
+            if args.output_consensus{
+                print_consensus(&r1, &args, &output, &output_rev, &viral_metadata, &best_genome_index);
+            }
+
             print_output(&r1, &args, &variants, &viral_metadata, &best_genome_index);
 
             output_info.push(OutputInfo {
@@ -380,9 +391,8 @@ pub fn call(args: CallArgs) {
             variant_info.push((r1.to_string(), variants));
             
             
-            if !args.keep_kmer_counts {
-                cleanup_kmc_files(&args.output);
-            }
+            cleanup_kmc_files(&args.output, &args.keep_kmer_counts);
+            
         }
     }
 
@@ -401,17 +411,24 @@ pub fn call(args: CallArgs) {
 
 }
 
-fn cleanup_kmc_files(output_dir: &str) {
+fn cleanup_kmc_files(output_dir: &str, keep_counts: &bool) {
     if let Ok(entries) = fs::read_dir(output_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                 if name.ends_with("kmc_pre")
                     || name.ends_with("kmc_suf")
-                    || name.ends_with("_counts.txt")
                 {
                     if let Err(e) = fs::remove_file(&path) {
                         eprintln!("Failed to delete {:?}: {}", path, e);
+                    }
+                }
+
+                if !keep_counts {
+                    if name.ends_with("_counts.txt") {
+                        if let Err(e) = fs::remove_file(&path) {
+                            eprintln!("Failed to delete {:?}: {}", path, e);
+                        }
                     }
                 }
             }
@@ -690,6 +707,70 @@ pub fn print_pileup(
                 rev.counts[i][2],
                 rev.counts[i][3]
             ).unwrap();
+        }
+    }
+}
+
+pub fn print_consensus(
+    read_output: &String,
+    args: &CallArgs,
+    output: &DashMap<String, OutputData>,
+    output_rev: &DashMap<String, OutputData>,
+    viral_metadata: &ViralMetadata,
+    best_genome_index: &u16, 
+){
+    info!("Writing output to pileup");
+
+    let file_stem = clean_sample_id(read_output);
+
+    let fa_consensus = File::create(format!("{}/{}.fa", args.output, file_stem)).unwrap_or_else(|e| {
+        error!("{} | Failed to create consensus fasta file", e);
+        std::process::exit(1);
+    });
+    let mut writer = BufWriter::new(fa_consensus);
+
+    let file_meta = &viral_metadata.files[*best_genome_index as usize];
+
+    let bases = [b'A', b'C', b'G', b'T'];
+
+    let mut line_len: usize = 0;
+
+    for seq_entry in &file_meta.sequences {
+        let seq = &seq_entry.name;
+
+        let fwd = output.get(seq).expect("Could not match seq to fwd counts");
+        let rev = output_rev.get(seq).expect("Could not match seq to rev counts");
+
+        writeln!(writer, ">{}", seq).unwrap();
+
+        for (i, _) in fwd.ref_bases.iter().enumerate() {
+            let row = fwd.counts[i];
+            let row_rev = rev.counts[i];
+
+            let row_total: Vec<u64> = (0..4)
+                .map(|b| row[b] + row_rev[b])
+                .collect();
+            let total_depth: u64 = row_total.iter().sum();
+
+            let consensus_base = if total_depth == 0u64 {
+                b'N'
+            } else {
+                let (max_i, _) = row_total.iter().enumerate().max_by_key(|(_, c)| *c).unwrap();
+                bases[max_i]
+            };
+
+            writer.write_all(&[consensus_base]).unwrap();
+            line_len += 1;
+
+            if line_len == DEFAULT_LINE_WRAP {
+                writer.write_all(b"\n").unwrap();
+                line_len = 0;
+            }
+
+        }
+
+        if line_len != 0 {
+            writer.write_all(b"\n\n").unwrap();
         }
     }
 }
