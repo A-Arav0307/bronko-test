@@ -85,6 +85,9 @@ If you do not want to use a pre-built database, you can replace `-d` with `-g` a
 #### Other Parameters
 There are several parameters that can be adjusted to fine-tune the stringency of variant calling. Refer to the wiki [here](https://github.com/treangenlab/bronko/wiki/Command-Parameters) for a comprehensive description of each parameter and its impact on downstream results when manipulated. 
 
+#### Description of Output Files
+bronko has the capability to produce many output files, including a tsv overview, vcf files, pileups, and consensus sequences. The details of all of the output formats are included in the wiki [here](https://github.com/treangenlab/bronko/wiki/Description-of-Outputs). 
+
 ## Issues
 bronko is still in early versions and we welcome any feedback, suggestions, or feature requests. If you run into any issues, please email Ryan Doughty at rdd4@rice.edu or raise an issue on github
 
