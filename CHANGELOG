@@ -2,6 +2,12 @@
 
 All major changes to bronko will be documented in this file
 
+
+## [v0.1.1] - 01/15/2026
+- Added consensus sequence reporting output with `--consensus`
+- Only saving _counts.txt file from kmc with `--keep-kmer-info`
+- Default min minor allele frequency is now 0.01, can still be set using `min-af`
+
 ## [v0.1.0] - 11/11/2025
 - First major release of bronko, corresponding to first manuscript
 - Updated defaults for multiple variant calling parameters, introduced multiple others to allow more control over variant calls
