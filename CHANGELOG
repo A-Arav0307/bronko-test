@@ -2,6 +2,9 @@
 
 All major changes to bronko will be documented in this file
 
+## [v0.1.2] - 01/27/2026
+- Minor bug fixes
+- Sample will still be processed even if no sequencing depth or mapping information 
 
 ## [v0.1.1] - 01/15/2026
 - Added consensus sequence reporting output with `--consensus`
