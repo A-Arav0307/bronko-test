@@ -96,4 +96,6 @@ bronko is still in early versions and we welcome any feedback, suggestions, or f
 > **Citation:** If you use bronko in your research, please cite: 
 > 
 > **Ryan D. Doughty, Michael J. Tisza, Todd J. Treangen** ["bronko: ultrafast, alignment-free detection of viral genome variation"](https://doi.org/10.64898/2025.12.01.691650). *bioRxiv* (2025).
+>
+> The manuscript has also been accepted to RECOMB 2026! See all the other accepted papers [here](https://recomb.org/recomb2026/accepted_papers.html#/)
 
