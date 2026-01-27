@@ -22,6 +22,7 @@ use rayon::join;
 use std::path::{Path};
 use std::io::{BufReader, BufRead, BufWriter, Write};
 use std::process::{Command, Stdio};
+use std::cmp::max;
 
 use statrs::distribution::{StudentsT, ContinuousCDF};
 
@@ -440,7 +441,7 @@ pub fn pick_best_genome(mapping_data: &FxHashMap<u16, (usize, usize, usize)>, vi
     //input data has key of usize that is the index in the Viral Metadata, and value of tuple (usize, usize) with the number of perfectly mapped kmers and variant mapped kmers
     // Value tuple: (perfect_kmers, variant_kmers)
     let mut best_genome: Option<u16> = None;
-    let mut best_score: f64 = 0.0;
+    let mut best_score: f64 = f64::NEG_INFINITY;
 
     for (file_index, (perfect, variant, unique_perfect)) in mapping_data.iter() {
         let genome_len: usize = viral_metadata.files[*file_index as usize]
@@ -461,6 +462,10 @@ pub fn pick_best_genome(mapping_data: &FxHashMap<u16, (usize, usize, usize)>, vi
             best_score = score;
             best_genome = Some(*file_index);
         }
+    }
+
+    if best_score == 0.0 {
+        warn!("No genome had any unique kmers, suggesting sequencing depth below --min-kmers or some other issue")
     }
 
     best_genome
@@ -492,7 +497,7 @@ pub fn pick_best_genome_paired(
 
     //get best genome just like for single end reads
     let mut best_genome: Option<u16> = None;
-    let mut best_score: f64 = 0.0;
+    let mut best_score: f64 = f64::NEG_INFINITY;
 
     for (file_index, (perfect, variant, unique_perfect)) in combined.iter() {
         let genome_len: usize = viral_metadata.files[*file_index as usize]
@@ -513,6 +518,10 @@ pub fn pick_best_genome_paired(
             best_score = score;
             best_genome = Some(*file_index);
         }
+    }
+
+    if best_score == 0.0 {
+        warn!("No genome had any unique kmers, suggesting sequencing depth below --min-kmers or some other issue")
     }
 
     best_genome
@@ -1223,7 +1232,10 @@ pub fn call_variants(
     }
 
     let breadth_cov: f64 = positions_covered as f64 / total_positions as f64;
-    let depth_cov: f64 = total_coverage as f64 / positions_covered as f64;
+    let mut depth_cov: f64 = 0.0;
+    if positions_covered > 0 {
+        depth_cov = total_coverage as f64 / positions_covered as f64;
+    }
     info!("Sample breadth of coverage: {}, depth of coverage: {}", breadth_cov, depth_cov);
     info!("Called {} major variants, {} minor above maf = {}", num_major_variants, num_minor_variants, min_af);
     (results, num_major_variants, num_minor_variants, breadth_cov, depth_cov)
@@ -1356,8 +1368,8 @@ pub fn map_kmers(
     //to store the number of kmers that are mapped perfectly or with 1-edit distance after all of the chunks
     //key is the index of the file in ViralMetadata, values are number of perfectly mapped and 1-edit distance kmers
     let results: DashMap<u16, (usize, usize, usize)> = DashMap::new();
-
-    let chunk_size = if ((kmers.len() / threads) as usize) < 10000 { (kmers.len() / threads) as usize } else { 10000 };
+    
+    let chunk_size = if ((kmers.len() / threads) as usize) < 10000 { max(kmers.len() / threads, 100) as usize } else { 10000 };
 
     kmers.par_chunks(chunk_size).for_each(|chunk| {
 
@@ -1510,6 +1522,12 @@ pub fn map_kmers(
                 .or_insert((perfect, variant, unique_perfect));
         }
     });
+
+    //ensure that each genome has 0s filled if nothing is mapped, otherwise error thrown downstream
+    for (i, _) in viral_metadata.files.iter().enumerate() {
+        let id = i as u16;
+        results.entry(id).or_insert((0,0,0));
+    }
 
     results.into_iter().collect()
 }
