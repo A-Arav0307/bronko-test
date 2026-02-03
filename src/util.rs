@@ -27,6 +27,13 @@ pub fn check_fasta(file: &str) -> bool {
     return false;
 }
 
+pub fn check_txt(file: &str) -> bool {
+    if file.ends_with(".txt"){
+        return true;
+    }
+    return false;
+}
+
 pub fn clean_sample_id<P: AsRef<Path>>(path: P) -> String {
     let filename = path.as_ref().file_name()
         .and_then(|s| s.to_str())

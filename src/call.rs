@@ -521,7 +521,7 @@ pub fn pick_best_genome_paired(
     }
 
     if best_score == 0.0 {
-        warn!("No genome had any unique kmers, suggesting sequencing depth below --min-kmers or some other issue")
+        warn!("No genome had any unique kmers, suggesting sequencing depth is below --min-kmers or some other issue")
     }
 
     best_genome
