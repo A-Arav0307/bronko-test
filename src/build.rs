@@ -14,6 +14,7 @@ use bincode::{config, Decode, Encode};
 
 use std::path::Path;
 use std::fs::File;
+use std::fs;
 
 use std::io::{BufRead,BufReader,BufWriter};
 
@@ -124,7 +125,7 @@ pub fn build(args: BuildArgs) {
     let mut genomes = if total_genomes == 0 {
             Vec::new()
         } else {
-            args.genomes.clone()
+            canonicalize_file_paths(&args.genomes)
         };
 
     if let Some(file_input_path) = &args.file_input {
@@ -147,10 +148,17 @@ pub fn build(args: BuildArgs) {
                         error!("Path within txt file genome list does not appear to be a fasta file: {}", line_path);
                         std::process::exit(1);
                     }
-                    if !genomes.contains(&line_path){
-                        genomes.push(line_path);
+
+                    let canonical_path = fs::canonicalize(&line_path).unwrap_or_else(|e| {
+                        error!("{} | Path within txt file does not exist or is inaccessible: {}", e, line_path);
+                        std::process::exit(1);
+                    });
+                    let path_string = canonical_path.to_string_lossy().into_owned();
+
+                    if !genomes.contains(&path_string){
+                        genomes.push(path_string);
+                        total_genomes += 1;
                     }
-                    total_genomes += 1;
                 },
                 Err(e) => {
                     error!("{} | Failed to read line in {}", e, file_input_path);
@@ -164,7 +172,7 @@ pub fn build(args: BuildArgs) {
         error!("No genomes provided using -g or --file-input, exiting");
         std::process::exit(1);
     } else {
-        info!("Read in {} genomes", total_genomes);
+        info!("Read in {} unique genomes", total_genomes);
     }
 
 

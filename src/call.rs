@@ -74,6 +74,19 @@ fn check_args(args: &CallArgs) {
         }
     }
 
+    if let Some(file_input_path) = &args.file_input {
+        if check_txt(file_input_path){
+            if !Path::new(file_input_path).exists(){
+                error!("Filepath provided with --file-input does not exist: {}", file_input_path);
+                std::process::exit(1);
+            }
+        } else {
+            error!("Filepath provided with --file-input does not appear to be a .txt file: {}", file_input_path);
+            std::process::exit(1);
+        }
+        
+    }
+
     let available_threads = num_cpus::get();
     if args.threads <= 0 {
         error!("Number of threads must be greater than 0");
@@ -155,13 +168,125 @@ pub fn call(args: CallArgs) {
     check_args(&args);
     trace!("k={}, threads={}", args.kmer, args.threads);
 
+    //collect all the fastq paths from the file and other sources 
+    let mut n_se_seq_datasets = args.reads.len();
+    let mut n_pe_seq_datasets = args.first_pairs.len();
+    let mut se_seq_datasets = if n_se_seq_datasets == 0 {
+        Vec::new()
+    } else {
+        canonicalize_file_paths(&args.reads)
+    };
+    
+    let mut pe_seq_datasets1 = if n_pe_seq_datasets == 0 {
+        Vec::new()
+    } else {
+        canonicalize_file_paths(&args.first_pairs)
+    };
+
+    let mut pe_seq_datasets2 = if n_pe_seq_datasets == 0 {
+        Vec::new()
+    } else {
+        canonicalize_file_paths(&args.second_pairs)
+    };
+    
+    if n_pe_seq_datasets == 0 {
+        trace!("No PE datasets provided with -1/-2");
+    }
+
+    if n_se_seq_datasets ==  0 {
+        trace!("No SE datasets provided with -r");
+    }
+
+    if let Some(file_input_path) = &args.file_input {
+        let genomes_file = File::open(file_input_path).unwrap_or_else(|e| {
+            error!("{} | Failed to open genomes file", e);
+            std::process::exit(1);
+        });
+
+        let reader = BufReader::new(genomes_file);
+                
+        for line in reader.lines() {
+            match line {
+                Ok(line_path) => {
+                    //split by tab to get if paired or not
+                    let parts: Vec<&str> = line_path.split_whitespace().collect();
+
+                    match parts.as_slice() {
+                        //SE reads
+                        [path] => {
+                            let p = path.to_string();
+                            check_fastq(&p);
+
+                            let canonical_path = fs::canonicalize(&p).unwrap_or_else(|e| {
+                                error!("{} | Path within txt file does not exist or is inaccessible: {}", e, p);
+                                std::process::exit(1);
+                            });
+                            let path_string = canonical_path.to_string_lossy().into_owned();
+
+                            if !se_seq_datasets.contains(&path_string) {
+                                se_seq_datasets.push(path_string);
+                            }
+                            n_se_seq_datasets += 1;
+                        }
+
+                        //PE reads
+                        [path1, path2] => {
+                            let p1 = path1.to_string();
+                            let p2 = path2.to_string();
+
+                            check_fastq(&p1);
+                            check_fastq(&p2);
+
+                            let canonical_path1 = fs::canonicalize(&p1).unwrap_or_else(|e| {
+                                error!("{} | Path within txt file does not exist or is inaccessible: {}", e, p1);
+                                std::process::exit(1);
+                            });
+                            let path_string1 = canonical_path1.to_string_lossy().into_owned();
+
+                            let canonical_path2 = fs::canonicalize(&p2).unwrap_or_else(|e| {
+                                error!("{} | Path within txt file does not exist or is inaccessible: {}", e, p2);
+                                std::process::exit(1);
+                            });
+                            let path_string2 = canonical_path2.to_string_lossy().into_owned();
+
+                            if !pe_seq_datasets1.contains(&path_string1) && 
+                               !pe_seq_datasets2.contains(&path_string1) && 
+                               !pe_seq_datasets1.contains(&path_string2) &&
+                               !pe_seq_datasets2.contains(&path_string2) 
+                            {
+                                pe_seq_datasets1.push(path_string1);
+                                pe_seq_datasets2.push(path_string2);
+                                n_pe_seq_datasets += 1;
+                            }
+                        }
+
+                        _ => {
+                            error!("Invalid format in genome list: {}", line_path);
+                            std::process::exit(1);
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("{} | Failed to read line in {}", e, file_input_path);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+
+    if n_pe_seq_datasets + n_se_seq_datasets == 0 {
+        error!("No sequencing datasets provided using -r or -1/-2 or --file-input, exiting");
+        std::process::exit(1);
+    } else {
+        info!("Read in {} sequencing datasets ({} single end, {} paired end)", n_pe_seq_datasets + n_se_seq_datasets, n_pe_seq_datasets, n_se_seq_datasets);
+    }
+
     // create output directory
     let out_path = Path::new(&args.output);
     fs::create_dir_all(out_path).unwrap_or_else(|e| {
         error!("{} | Unable to create outputs in output directory 2", e);
         std::process::exit(1);
     });
-
 
 
     let (ref_index, viral_metadata);
@@ -205,13 +330,13 @@ pub fn call(args: CallArgs) {
     }
 
     // storing the variant information
-    let total_samples = args.reads.len() + args.first_pairs.len();
+    let total_samples = n_se_seq_datasets + n_pe_seq_datasets;
     let mut variant_info: Vec<(String, Vec<VCFRecord>)> = Vec::with_capacity(total_samples); // (sample_name, variant records)
     let mut output_info: Vec<OutputInfo> = Vec::with_capacity(total_samples); //storing the outputs for tsv overview
 
     // PROCESS SINGLE END READS
-    if args.reads.len() > 0 {
-        for se_read in args.reads.iter() {
+    if n_se_seq_datasets > 0 {
+        for se_read in se_seq_datasets.iter() {
             info!("Processing {}", se_read);
 
             //Get kmer counts
@@ -300,8 +425,8 @@ pub fn call(args: CallArgs) {
     }
 
     // PROCESS PAIRED END READS
-    if args.first_pairs.len() > 0 && args.second_pairs.len() > 0 {
-        for (r1, r2) in args.first_pairs.iter().zip(args.second_pairs.iter()){
+    if n_pe_seq_datasets > 0 {
+        for (r1, r2) in pe_seq_datasets1.iter().zip(pe_seq_datasets2.iter()){
             info!("Processing paired reads {}, {}", r1, r2);
 
             let half_threads = &args.threads / 2;
@@ -1246,8 +1371,12 @@ pub fn count_kmers_kmc(reads: &String, threads: &usize, args: &CallArgs) -> Resu
     let fastq_path = reads.clone();
     let file_stem = clean_sample_id(&fastq_path);
 
+
     let output_dir = Path::new(&args.output);
     let tmp_dir = output_dir.join(format!("tmp_{}", file_stem));
+    trace!("{}, {}, {}", fastq_path, file_stem, tmp_dir.display());
+
+
     fs::create_dir_all(&tmp_dir)
         .map_err(|e| format!("Failed to create tmp dir: {}", e))?;
 
@@ -1272,6 +1401,11 @@ pub fn count_kmers_kmc(reads: &String, threads: &usize, args: &CallArgs) -> Resu
         .stderr(Stdio::piped())
         .output()
         .map_err(|e| format!("KMC3 failed: {}", e))?;
+
+    if !kmc_output.status.success() {
+        let stderr = String::from_utf8_lossy(&kmc_output.stderr);
+        return Err(format!("KMC3 counting failed: {}", stderr));
+    }
 
     let stdout = String::from_utf8_lossy(&kmc_output.stdout);
 

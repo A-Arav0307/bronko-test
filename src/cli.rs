@@ -9,7 +9,6 @@ fn custom_styles() -> Styles {
         .usage(AnsiColor::White.on_default() | Effects::BOLD)
         .literal(AnsiColor::White.on_default() | Effects::BOLD)
         .placeholder(AnsiColor::White.on_default())
-        // You can customize other elements as well, like error messages, hints, etc.
 }
 
 #[derive(Parser)]
@@ -82,8 +81,8 @@ pub struct CallArgs {
     #[clap(num_args=1.., short='2', long="second-pairs", help_heading="READS INPUT", help = "Second pairs for raw paired-end reads (fastq/gzip)")]
     pub second_pairs: Vec<String>,
 
-    #[clap(long="file-input", help_heading="READS INPUT", help = "Path to .txt file containing paths to each file, one line per file (paired end reads should be tab delimited on same line)")]
-    pub file_input: String,
+    #[clap(long="file-input", help_heading="READS INPUT", help = "Path to .txt file containing paths to each fastq file, one line per file (paired end reads should be tab delimited on same line)")]
+    pub file_input: Option<String>,
 
     //GENERAL ALGORITHM PARAMETERS
     //kmer size
