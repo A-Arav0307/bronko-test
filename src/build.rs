@@ -14,8 +14,9 @@ use bincode::{config, Decode, Encode};
 
 use std::path::Path;
 use std::fs::File;
+use std::fs;
 
-use std::io::BufWriter;
+use std::io::{BufRead,BufReader,BufWriter};
 
 use rayon::prelude::*;
 
@@ -81,6 +82,8 @@ fn check_args(args: &BuildArgs) {
         std::process::exit(1)
     }
 
+    
+
     for fasta_file in &args.genomes {
         if !check_fasta(&fasta_file){
             error!("{} does not appear to be a fasta file (must be .fa(.gz)/.fasta(.gz)/.fna(.gz))", &fasta_file);
@@ -97,6 +100,19 @@ fn check_args(args: &BuildArgs) {
         std::process::exit(1);
     }
 
+    if let Some(file_input_path) = &args.file_input {
+        if check_txt(file_input_path){
+            if !Path::new(file_input_path).exists(){
+                error!("Filepath provided with --file-input does not exist: {}", file_input_path);
+                std::process::exit(1);
+            }
+        } else {
+            error!("Filepath provided with --file-input does not appear to be a .txt file: {}", file_input_path);
+            std::process::exit(1);
+        }
+        
+    }
+    
 }
 
 pub fn build(args: BuildArgs) {
@@ -104,8 +120,64 @@ pub fn build(args: BuildArgs) {
     //Check arguments for building index
     check_args(&args);
 
+    //combine genome set from genomes and file (if necessary), exit if no genomes
+    let mut total_genomes = args.genomes.len();
+    let mut genomes = if total_genomes == 0 {
+            Vec::new()
+        } else {
+            canonicalize_file_paths(&args.genomes)
+        };
+
+    if let Some(file_input_path) = &args.file_input {
+        let genomes_file = File::open(file_input_path).unwrap_or_else(|e| {
+            error!("{} | Failed to open genomes file", e);
+            std::process::exit(1);
+        });
+
+        let reader = BufReader::new(genomes_file);
+                
+        for line in reader.lines() {
+            match line {
+                Ok(line_path) => {
+                    if check_fasta(&line_path){
+                        if !Path::new(&line_path).exists(){
+                            error!("Path within txt file genome list does not exist: {}", line_path);
+                            std::process::exit(1);
+                        }
+                    } else {
+                        error!("Path within txt file genome list does not appear to be a fasta file: {}", line_path);
+                        std::process::exit(1);
+                    }
+
+                    let canonical_path = fs::canonicalize(&line_path).unwrap_or_else(|e| {
+                        error!("{} | Path within txt file does not exist or is inaccessible: {}", e, line_path);
+                        std::process::exit(1);
+                    });
+                    let path_string = canonical_path.to_string_lossy().into_owned();
+
+                    if !genomes.contains(&path_string){
+                        genomes.push(path_string);
+                        total_genomes += 1;
+                    }
+                },
+                Err(e) => {
+                    error!("{} | Failed to read line in {}", e, file_input_path);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+
+    if total_genomes == 0 {
+        error!("No genomes provided using -g or --file-input, exiting");
+        std::process::exit(1);
+    } else {
+        info!("Read in {} unique genomes", total_genomes);
+    }
+
+
     //build the indexes
-    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &args.genomes).unwrap_or_else(|e| {
+    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes).unwrap_or_else(|e| {
         error!("{} | Reference failed to build", e);
         std::process::exit(1)
     });
@@ -148,11 +220,15 @@ pub fn build_indexes(
 ) -> Result<(FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata), Error> {
     info!("Building indexes from fasta files");
 
-    // Step 1: Each thread builds its own index + metadata
-    let per_file: Vec<(FxHashMap<u64, Vec<BucketInfo>>, FileMeta)> = genomes
+    // use map - reduce framework from rayon to process and integrate all files into single index
+    let (global_index, all_files) = genomes
         .par_iter()
         .enumerate()
         .map(|(file_id, file_path)| {
+            trace!("{}: {}", file_id, file_path);
+            let mut local_index: FxHashMap<u64, Vec<BucketInfo>> = FxHashMap::default();
+            let mut sequences: Vec<SeqMeta> = Vec::new();
+
             let mut reader = parse_fastx_file(file_path).unwrap_or_else(|e| {
                 error!("{} | Failed to parse fasta file: {}", e, file_path);
                 std::process::exit(1)
@@ -188,19 +264,21 @@ pub fn build_indexes(
                     seq: seq.to_vec(), 
                 });
 
-                for i in 0..=seq_len.saturating_sub(k) {
-                    let kmer = &seq[i..i + k];
-                    let (kmer_bin, canonical) = canonical_kmer(kmer, k);
-                    let buckets = assign_buckets(kmer_bin, k);
+                if seq_len >= k {
+                    for i in 0..=seq_len.saturating_sub(k) {
+                        let kmer = &seq[i..i + k];
+                        let (kmer_bin, canonical) = canonical_kmer(kmer, k);
+                        let buckets = assign_buckets(kmer_bin, k);
 
-                    for (j, bucket_id) in buckets.iter().enumerate() {
-                        local_index.entry(*bucket_id).or_default().push(BucketInfo {
-                            file_id: file_id as u16,
-                            seq_id,
-                            location: i as u32,
-                            idx: j as u8,
-                            canonical: canonical,
-                        });
+                        for (j, bucket_id) in buckets.iter().enumerate() {
+                            local_index.entry(*bucket_id).or_default().push(BucketInfo {
+                                file_id: file_id as u16,
+                                seq_id,
+                                location: i as u32,
+                                idx: j as u8,
+                                canonical: canonical,
+                            });
+                        }
                     }
                 }
 
@@ -212,20 +290,23 @@ pub fn build_indexes(
                 sequences,
             };
 
-            (local_index, file_meta)
+            (local_index, vec![file_meta])
         })
-        .collect();
+        .reduce(
+            || (FxHashMap::default(), Vec::new()), 
+            |(mut map_a, mut files_a), (mut map_b, mut files_b) | {
+                if map_a.len() < map_b.len() {
+                    std::mem::swap(&mut map_a, &mut map_b);
+                }
 
-    // Step 2: Merge all local indexes + collect metadata
-    let mut global_index: FxHashMap<u64, Vec<BucketInfo>> = FxHashMap::default();
-    let mut files: Vec<FileMeta> = Vec::with_capacity(per_file.len());
+                for (bucket_id, mut entries) in map_b {
+                    map_a.entry(bucket_id).or_default().append(&mut entries);
+                }
 
-    for (local_index, file_meta) in per_file {
-        for (bucket_id, mut entries) in local_index {
-            global_index.entry(bucket_id).or_default().append(&mut entries);
-        }
-        files.push(file_meta);
-    }
+                files_a.append(&mut files_b);
+                (map_a, files_a)
+            }
+        );
 
-    Ok((global_index, ViralMetadata { files, k}))
+    Ok((global_index, ViralMetadata { files: all_files, k}))
 }

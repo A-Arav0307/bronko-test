@@ -1,5 +1,9 @@
 use memory_stats::memory_stats;
 use std::path::Path;
+use std::fs;
+use log::*;
+
+
 
 pub fn check_fastq(file: &str) -> bool {
     if file.ends_with(".fq")
@@ -27,6 +31,13 @@ pub fn check_fasta(file: &str) -> bool {
     return false;
 }
 
+pub fn check_txt(file: &str) -> bool {
+    if file.ends_with(".txt"){
+        return true;
+    }
+    return false;
+}
+
 pub fn clean_sample_id<P: AsRef<Path>>(path: P) -> String {
     let filename = path.as_ref().file_name()
         .and_then(|s| s.to_str())
@@ -47,6 +58,20 @@ pub fn clean_sample_id<P: AsRef<Path>>(path: P) -> String {
         .and_then(|s| s.to_str())
         .unwrap_or("unknown")
         .to_string()
+}
+
+pub fn canonicalize_file_paths(paths: &[String]) -> Vec<String> {
+    paths
+        .iter()
+        .map(|p| {
+            fs::canonicalize(p)
+                .map(|path_buf| path_buf.to_string_lossy().into_owned())
+                .unwrap_or_else(|e| {
+                    error!("{} | {} path does not exist or is inaccessible", e, p);
+                    std::process::exit(1);
+                })
+        })
+        .collect()
 }
 
 pub fn log_memory_usage(info: bool, message: &str) {

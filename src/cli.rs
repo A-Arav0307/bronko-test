@@ -9,7 +9,6 @@ fn custom_styles() -> Styles {
         .usage(AnsiColor::White.on_default() | Effects::BOLD)
         .literal(AnsiColor::White.on_default() | Effects::BOLD)
         .placeholder(AnsiColor::White.on_default())
-        // You can customize other elements as well, like error messages, hints, etc.
 }
 
 #[derive(Parser)]
@@ -34,6 +33,9 @@ pub struct BuildArgs {
     // the fasta file to be used as a reference
     #[clap(num_args=1.., short='g', long = "genomes", help_heading = "REFERENCE INPUT", help = "Genome files to be built into index (fasta/gzip)")]
     pub genomes: Vec<String>,
+
+    #[clap(long="file-input", help_heading="REFERENCE INPUT", help = "Path to .txt file containing paths to each file, one line per file, each containing a single genome")]
+    pub file_input: Option<String>,
 
     // INDEXING PARAMETERS
     // the kmer size
@@ -78,6 +80,9 @@ pub struct CallArgs {
 
     #[clap(num_args=1.., short='2', long="second-pairs", help_heading="READS INPUT", help = "Second pairs for raw paired-end reads (fastq/gzip)")]
     pub second_pairs: Vec<String>,
+
+    #[clap(long="file-input", help_heading="READS INPUT", help = "Path to .txt file containing paths to each fastq file, one line per file (paired end reads should be tab delimited on same line)")]
+    pub file_input: Option<String>,
 
     //GENERAL ALGORITHM PARAMETERS
     //kmer size

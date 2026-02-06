@@ -2,6 +2,11 @@
 
 All major changes to bronko will be documented in this file
 
+## [v0.1.3] - 02/06/2026
+- Added `--file-input` for both build and call command to allow users to use txt with samples as input (more detail in wiki)
+- Improved performance of build command with many genomes
+- Other logging and path enhancements
+
 ## [v0.1.2] - 01/27/2026
 - Minor bug fixes
 - Sample will still be processed even if no sequencing depth or mapping information 
