@@ -8,7 +8,7 @@
 [![Open Issues](https://img.shields.io/github/issues/treangenlab/bronko)](https://github.com/treangenlab/bronko/issues)
 
 > [!TIP]
-> Also check out the [wiki](https://github.com/treangenlab/bronko/wiki/Command-Parameters) for more detailed information on bronko!
+> Also check out the [wiki](https://github.com/treangenlab/bronko/wiki) for more detailed information on bronko!
 
 ## Introduction
 **bronko** is a viral variant caller that can rapidly detect most major and minor variants in any given sequencing dataset. bronko bypasses read mapping and variant calling and directly outputs a VCF from a set of reads and reference genome(s).  
