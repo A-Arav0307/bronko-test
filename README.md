@@ -1,8 +1,14 @@
-# bronko - ultra-rapid alignment-free viral variant calling
+# bronko - ultra-rapid alignment-free <img src="https://github.com/treangenlab/bronko/blob/main/img/bronko_logo.png" align="right" alt="drawing" height="250"/> <br> viral variant calling
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/treangenlab/bronko/rust.yml) ![GitHub License](https://img.shields.io/github/license/treangenlab/bronko) ![Conda Downloads](https://img.shields.io/conda/d/bioconda/bronko)
 
-<img src="https://github.com/treangenlab/bronko/blob/main/img/bronko_logo.png" alt="drawing" width="400"/>
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/treangenlab/bronko/rust.yml) 
+[![GitHub License](https://img.shields.io/github/license/treangenlab/bronko)](https://github.com/treangenlab/bronko/blob/main/LICENSE)
+[![Conda Downloads](https://img.shields.io/conda/d/bioconda/bronko)](https://anaconda.org/channels/bioconda/packages/bronko/overview)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/treangenlab/bronko)](https://github.com/treangenlab/bronko/releases)
+[![Open Issues](https://img.shields.io/github/issues/treangenlab/bronko)](https://github.com/treangenlab/bronko/issues)
+
+> [!TIP]
+> Also check out the [wiki](https://github.com/treangenlab/bronko/wiki/Command-Parameters) for more detailed information on bronko!
 
 ## Introduction
 **bronko** is a viral variant caller that can rapidly detect most major and minor variants in any given sequencing dataset. bronko bypasses read mapping and variant calling and directly outputs a VCF from a set of reads and reference genome(s).  
