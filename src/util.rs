@@ -12,6 +12,7 @@ pub fn check_fastq(file: &str) -> bool {
         || file.ends_with("fastq.gz")
         || file.ends_with("fnq")
         || file.ends_with("fnq.gz")
+        
     {
         return true;
     }
@@ -25,8 +26,10 @@ pub fn check_fasta(file: &str) -> bool {
         || file.ends_with("fasta.gz")
         || file.ends_with("fna")
         || file.ends_with("fna.gz")
-    {
+        
+        {
         return true;
+        
     }
     return false;
 }

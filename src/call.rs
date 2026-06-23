@@ -802,7 +802,7 @@ pub fn print_pileup(
     output: &DashMap<String, OutputData>,
     output_rev: &DashMap<String, OutputData>,
     viral_metadata: &ViralMetadata,
-    best_genome_index: &u16, 
+    best_genome_index: &u16,
 ){
     info!("Writing output to pileup");
 
@@ -851,7 +851,7 @@ pub fn print_consensus(
     output: &DashMap<String, OutputData>,
     output_rev: &DashMap<String, OutputData>,
     viral_metadata: &ViralMetadata,
-    best_genome_index: &u16, 
+    best_genome_index: &u16,
 ){
     info!("Writing output to pileup");
 
@@ -1182,7 +1182,7 @@ pub fn get_baseline_noise(fwd: &OutputData, rev: &OutputData) -> Vec<Noise> {
 }
 
 pub fn call_variants(
-    args: &CallArgs, 
+    args: &CallArgs,
     output: &DashMap<String, OutputData>,
     output_count: &DashMap<String, OutputData>,
     output_rev: &DashMap<String, OutputData>,
@@ -1461,7 +1461,7 @@ fn extract_number_from_line(line: &str) -> Option<usize> {
 
 #[derive(Clone)]
 pub struct OutputData {
-    pub counts: Vec<[u64;4]>,
+    pub counts: Vec<[u64; 4]>,
     pub ref_bases: Vec<u8>,
 }
 
@@ -1507,8 +1507,15 @@ pub fn map_kmers(
 
     kmers.par_chunks(chunk_size).for_each(|chunk| {
 
-        //key is the index of the file in ViralMetadata, values are number of perfectly mapped and 1-edit distance kmers and unique perfectly mapped kmers
-        let mut local_counts: FxHashMap<u16, (usize, usize, usize)> = FxHashMap::default(); //storing the number of perfectly mapped kmers (buckets found = len(filtered_buckets)) and variant mapped kmers (buckets found = 1) and unique perfect (perfect and only mapped to 1 genome) in thread
+        let mut local_counts: FxHashMap<u16, (usize, usize, usize)> = FxHashMap::default();
+
+        // Thread-local output accumulators: (file_id, seq_id) -> position -> [base0..base3]
+        // Avoids per-bucket DashMap lock; one DashMap write per sequence per chunk at merge time.
+        type SeqKey = (u16, u8);
+        let mut local_fwd_sum: FxHashMap<SeqKey, FxHashMap<usize, [u64; 4]>> = FxHashMap::default();
+        let mut local_fwd_max: FxHashMap<SeqKey, FxHashMap<usize, [u64; 4]>> = FxHashMap::default();
+        let mut local_rev_sum: FxHashMap<SeqKey, FxHashMap<usize, [u64; 4]>> = FxHashMap::default();
+        let mut local_rev_max: FxHashMap<SeqKey, FxHashMap<usize, [u64; 4]>> = FxHashMap::default();
 
         for (kmer, n) in chunk {
 
@@ -1534,82 +1541,40 @@ pub fn map_kmers(
                 if let Some(bucket_infos) = index.get(&bucket) {
 
                     for info in bucket_infos {
-                        // NEED TO UPDATE TO FILTER OUT DUPLICATE BUCKETS IN GENOMES (Problem is that buckets could be from multiple)
-
-                        //get sequence info from metadata
-                        let file_meta = &viral_metadata.files[info.file_id as usize];
-                        
-                        //update the number of hits for this kmer
                         *per_genome_bucket_hits
                             .entry(info.file_id.clone())
                             .or_insert(0) += 1;
 
-                        //get sequence name as well
-                        let seq_meta = &file_meta.sequences[info.seq_id as usize];
-                        let seq = &seq_meta.name;
+                        let genome_pos = info.location as usize;
+                        let nuc_x = info.idx as usize;
+                        let idx = genome_pos + nuc_x;
+                        let key: SeqKey = (info.file_id, info.seq_id);
 
-                        if let Some(maps) = output_maps.get(&info.file_id) {
-                            let (output, output_rev, output_counts, output_rev_counts) = maps;
-
-                            //get genome position and variant position in kmer
-                            let genome_pos = info.location as usize;
-                            let nuc_x = info.idx as usize;
-                            
-                            if info.canonical {
-                                let pos = k - nuc_x - 1;
-                                let bit_idx = (((kmer_bin >> (2 * (k - pos - 1))) & 0b11) ^ 0b11) as usize;
-                                let idx  = genome_pos + nuc_x;
-
-                                if rc {
-                                    if let Some(mut rec) = output_counts.get_mut(seq) {
-                                        rec.counts[idx][bit_idx] += 1;
-                                    }
-        
-                                    if let Some(mut rec) = output.get_mut(seq) {
-                                        if rec.counts[idx][bit_idx] < *n {
-                                            rec.counts[idx][bit_idx] = *n;
-                                        }
-                                    }
-                                } else {
-
-                                    if let Some(mut rec) = output_rev_counts.get_mut(seq) {
-                                        rec.counts[idx][bit_idx] += 1;
-                                    }
-        
-                                    if let Some(mut rec) = output_rev.get_mut(seq) {
-                                        if rec.counts[idx][bit_idx] < *n {
-                                            rec.counts[idx][bit_idx] = *n;
-                                        }
-                                    }
-                                }
+                        if info.canonical {
+                            // pos = k - nuc_x - 1, so k - pos - 1 = nuc_x
+                            let bit_idx = (((kmer_bin >> (2 * nuc_x)) & 0b11) ^ 0b11) as usize;
+                            if rc {
+                                local_fwd_sum.entry(key).or_default().entry(idx).or_insert([0u64; 4])[bit_idx] += 1;
+                                let e = local_fwd_max.entry(key).or_default().entry(idx).or_insert([0u64; 4]);
+                                if e[bit_idx] < *n { e[bit_idx] = *n; }
                             } else {
-                                let pos = nuc_x;
-                                let bit_idx = ((kmer_bin >> (2* (k - pos - 1))) & 0b11) as usize;
-                                let idx = genome_pos + nuc_x;
-
-                                if rc {
-                                    if let Some(mut rec) = output_rev_counts.get_mut(seq) {
-                                        rec.counts[idx][bit_idx] += 1;
-                                    }
-        
-                                    if let Some(mut rec) = output_rev.get_mut(seq) {
-                                        if rec.counts[idx][bit_idx] < *n {
-                                            rec.counts[idx][bit_idx] = *n;
-                                        }
-                                    }
-                                } else {
-                                    if let Some(mut rec) = output_counts.get_mut(seq) {
-                                        rec.counts[idx][bit_idx] += 1;
-                                    }
-        
-                                    if let Some(mut rec) = output.get_mut(seq) {
-                                        if rec.counts[idx][bit_idx] < *n {
-                                            rec.counts[idx][bit_idx] = *n;
-                                        }
-                                    }
-                                }    
+                                local_rev_sum.entry(key).or_default().entry(idx).or_insert([0u64; 4])[bit_idx] += 1;
+                                let e = local_rev_max.entry(key).or_default().entry(idx).or_insert([0u64; 4]);
+                                if e[bit_idx] < *n { e[bit_idx] = *n; }
                             }
-                        }    
+                        } else {
+                            // pos = nuc_x, so k - pos - 1 = k - nuc_x - 1
+                            let bit_idx = ((kmer_bin >> (2 * (k - nuc_x - 1))) & 0b11) as usize;
+                            if rc {
+                                local_rev_sum.entry(key).or_default().entry(idx).or_insert([0u64; 4])[bit_idx] += 1;
+                                let e = local_rev_max.entry(key).or_default().entry(idx).or_insert([0u64; 4]);
+                                if e[bit_idx] < *n { e[bit_idx] = *n; }
+                            } else {
+                                local_fwd_sum.entry(key).or_default().entry(idx).or_insert([0u64; 4])[bit_idx] += 1;
+                                let e = local_fwd_max.entry(key).or_default().entry(idx).or_insert([0u64; 4]);
+                                if e[bit_idx] < *n { e[bit_idx] = *n; }
+                            }
+                        }
                     }
                 }
             }
@@ -1644,6 +1609,41 @@ pub fn map_kmers(
                 entry.2 += 1; // perfect + unique
             }
         }
+        // Merge thread-local output buffers into shared DashMaps.
+        // One DashMap lock per sequence per map type per chunk (vs. one per bucket hit).
+        for ((file_id, seq_id), pos_map) in local_fwd_sum {
+            if let Some(maps) = output_maps.get(&file_id) {
+                let seq = &viral_metadata.files[file_id as usize].sequences[seq_id as usize].name;
+                if let Some(mut rec) = maps.2.get_mut(seq) {
+                    for (pos, vals) in pos_map { for b in 0..4 { rec.counts[pos][b] += vals[b]; } }
+                }
+            }
+        }
+        for ((file_id, seq_id), pos_map) in local_fwd_max {
+            if let Some(maps) = output_maps.get(&file_id) {
+                let seq = &viral_metadata.files[file_id as usize].sequences[seq_id as usize].name;
+                if let Some(mut rec) = maps.0.get_mut(seq) {
+                    for (pos, vals) in pos_map { for b in 0..4 { if rec.counts[pos][b] < vals[b] { rec.counts[pos][b] = vals[b]; } } }
+                }
+            }
+        }
+        for ((file_id, seq_id), pos_map) in local_rev_sum {
+            if let Some(maps) = output_maps.get(&file_id) {
+                let seq = &viral_metadata.files[file_id as usize].sequences[seq_id as usize].name;
+                if let Some(mut rec) = maps.3.get_mut(seq) {
+                    for (pos, vals) in pos_map { for b in 0..4 { rec.counts[pos][b] += vals[b]; } }
+                }
+            }
+        }
+        for ((file_id, seq_id), pos_map) in local_rev_max {
+            if let Some(maps) = output_maps.get(&file_id) {
+                let seq = &viral_metadata.files[file_id as usize].sequences[seq_id as usize].name;
+                if let Some(mut rec) = maps.1.get_mut(seq) {
+                    for (pos, vals) in pos_map { for b in 0..4 { if rec.counts[pos][b] < vals[b] { rec.counts[pos][b] = vals[b]; } } }
+                }
+            }
+        }
+
         // merge local counts into global DashMap
         for (file_index, (perfect, variant, unique_perfect)) in local_counts {
             results
@@ -1681,22 +1681,19 @@ pub fn initialize_output_maps(
     let mut result = FxHashMap::default();
 
     for (i, file) in metadata.files.iter().enumerate() {
-        let output = DashMap::new(); //forward depth estimate
-        let output_rev = DashMap::new(); //reverse depth estimate
-        let output_counts = DashMap::new(); //forward number of kmers
-        let output_rev_counts = DashMap::new(); //reverse number of kmers
+        let output = DashMap::new();
+        let output_rev = DashMap::new();
+        let output_counts = DashMap::new();
+        let output_rev_counts = DashMap::new();
 
         for seq_meta in &file.sequences {
             let length = seq_meta.len;
             let mut ref_bases = Vec::with_capacity(length);
-
             ref_bases.extend_from_slice(&seq_meta.seq);
-
             let record = OutputData {
                 counts: vec![[0u64; 4]; length],
                 ref_bases,
             };
-
             output.insert(seq_meta.name.clone(), record.clone());
             output_rev.insert(seq_meta.name.clone(), record.clone());
             output_counts.insert(seq_meta.name.clone(), record.clone());

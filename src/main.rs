@@ -26,4 +26,5 @@ fn main() {
 
     let end = Instant::now();
     eprintln!("\nbronko v{} finished in {}s", BRONKO_VERSION, end.duration_since(start).as_secs_f32());
+    std::process::exit(0);
 }

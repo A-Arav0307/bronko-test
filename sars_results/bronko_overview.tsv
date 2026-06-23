@@ -1,0 +1,2 @@
+filename	selected_genome	num_major_variants	num_minor_variants	breadth_coverage	depth_coverage	num_perfect_kmers	num_variant_kmers	num_unmapped_kmers
+/Users/aaravgupta/Downloads/SRR39028133.fastq.gz	genomic	110	14	0.9727	2887.3023	54552	160045	88600

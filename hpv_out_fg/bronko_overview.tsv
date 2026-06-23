@@ -1,0 +1,2 @@
+filename	selected_genome	num_major_variants	num_minor_variants	breadth_coverage	depth_coverage	num_perfect_kmers	num_variant_kmers	num_unmapped_kmers
+/Users/aaravgupta/Documents/bronko/bronko/test_data/rep1_R1.fastq.gz	HPV16	0	1	0.9947	34099.4695	15230	600836	286250
