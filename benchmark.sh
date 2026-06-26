@@ -18,16 +18,16 @@ RESULTS_CSV=~/bronko_benchmark/results.csv
 
 # create csv with header if it doesn't exist
 if [ ! -f $RESULTS_CSV ]; then
-    echo "label,version,time_ms,peak_memory_kb" > $RESULTS_CSV
+    echo "label,version,time_s,peak_memory_gb" > $RESULTS_CSV
 fi
 
 echo "==============================="
 echo "running OLD bronko on ${LABEL}..."
 echo "==============================="
 /usr/bin/time -v $OLD call -g $GENOME -r $READS -o /tmp/out_old -t $THREADS -k 21 2>/tmp/old_time.txt
-old_time=$(grep "wall clock" /tmp/old_time.txt | awk '{print $NF}' | awk -F: '{print ($1*60+$2)*1000}')
-old_mem=$(grep "Maximum resident" /tmp/old_time.txt | awk '{print $NF}')
-echo "OLD bronko time: ${old_time}ms, peak memory: ${old_mem}kb"
+old_time=$(grep "wall clock" /tmp/old_time.txt | awk '{print $NF}' | awk -F: '{print $1*60+$2}')
+old_mem=$(grep "Maximum resident" /tmp/old_time.txt | awk '{print $NF/1024/1024}')
+echo "OLD bronko time: ${old_time}s, peak memory: ${old_mem}gb"
 echo "$LABEL,old,$old_time,$old_mem" >> $RESULTS_CSV
 
 echo ""
@@ -35,17 +35,17 @@ echo "==============================="
 echo "running NEW bronko on ${LABEL}..."
 echo "==============================="
 /usr/bin/time -v $NEW call -g $GENOME -r $READS -o /tmp/out_new -t $THREADS -k 21 2>/tmp/new_time.txt
-new_time=$(grep "wall clock" /tmp/new_time.txt | awk '{print $NF}' | awk -F: '{print ($1*60+$2)*1000}')
-new_mem=$(grep "Maximum resident" /tmp/new_time.txt | awk '{print $NF}')
-echo "NEW bronko time: ${new_time}ms, peak memory: ${new_mem}kb"
+new_time=$(grep "wall clock" /tmp/new_time.txt | awk '{print $NF}' | awk -F: '{print $1*60+$2}')
+new_mem=$(grep "Maximum resident" /tmp/new_time.txt | awk '{print $NF/1024/1024}')
+echo "NEW bronko time: ${new_time}s, peak memory: ${new_mem}gb"
 echo "$LABEL,new,$new_time,$new_mem" >> $RESULTS_CSV
 
 echo ""
 echo "==============================="
 echo "RESULTS"
 echo "==============================="
-echo "OLD: ${old_time}ms, ${old_mem}kb"
-echo "NEW: ${new_time}ms, ${new_mem}kb"
+echo "OLD: ${old_time}s, ${old_mem}gb"
+echo "NEW: ${new_time}s, ${new_mem}gb"
 speedup=$(echo "scale=2; $old_time / $new_time" | bc)
 echo "Speedup: ${speedup}x"
 
