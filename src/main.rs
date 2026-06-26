@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 pub mod cli;
 use cli::*;
 
@@ -16,15 +14,9 @@ fn main() {
     println!("Developed by Ryan Doughty (Rice University)");
     println!("Correspondence: rdd4@rice.edu, treangen@rice.edu\n");
 
-    let start = Instant::now();
-
     let args = cli::parse_args();
     match args.mode {
         Mode::Call(call_args) => call::call(call_args),
         Mode::Build(build_args) => build::build(build_args),
     }
-
-    let end = Instant::now();
-    eprintln!("\nbronko v{} finished in {}s", BRONKO_VERSION, end.duration_since(start).as_secs_f32());
-    std::process::exit(0);
 }

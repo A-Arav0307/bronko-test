@@ -1,8 +1,8 @@
 pub fn assign_buckets(kmer: u64, k: usize) -> Vec<u64> {
-    let mut buckets = [0u64; 32];
-    let mut num_a = [0u64; 32];
-    let mut val = [0u64; 32];
-    let mut mu = [0u64; 32];
+    let mut buckets = [0u64, 32];
+    let mut num_a = [0u64, 32];
+    let mut val = [0u64, 32];
+    let mut mu = [0u64, 32];
 
     // Initialize mask and power variables
     let mut mask = 3u64 << ((k - 1) * 2);

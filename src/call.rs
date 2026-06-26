@@ -163,6 +163,7 @@ pub struct OutputInfo {
 }
 
 pub fn call(args: CallArgs) {
+    let _start = std::time::Instant::now();
 
     //First check to make sure none of the arguments are invalid
     check_args(&args);
@@ -534,6 +535,8 @@ pub fn call(args: CallArgs) {
 
     info!("");
     info!("bronko complete!");
+    eprintln!("\nbronko v{} finished in {}s", crate::consts::BRONKO_VERSION, _start.elapsed().as_secs_f32());
+    std::process::exit(0);
 
 }
 
