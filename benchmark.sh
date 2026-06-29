@@ -16,10 +16,16 @@ THREADS=30
 RESULTS_CSV=~/bronko_benchmark/results.csv
 RUNS=5
 
-# create csv with header if it doesn't exist
 if [ ! -f $RESULTS_CSV ]; then
     echo "label,version,run,time_s,peak_memory_gb" > $RESULTS_CSV
 fi
+
+get_median() {
+    local arr=("$@")
+    local sorted=($(printf '%s\n' "${arr[@]}" | sort -n))
+    local mid=$(( ${#sorted[@]} / 2 ))
+    echo "${sorted[$mid]}"
+}
 
 run_bronko() {
     local binary=$1
@@ -27,42 +33,40 @@ run_bronko() {
     local out_dir=$3
 
     echo "==============================="
-    echo "running ${version} bronko on ${LABEL} (${RUNS} runs)..."
+    echo "running ${version} on ${LABEL} (${RUNS} runs)..."
     echo "==============================="
 
     local times=()
-    local mem=0
+    local last_mem=0
 
     for i in $(seq 1 $RUNS); do
         echo "  run $i/$RUNS..."
         /usr/bin/time -v $binary call -g $GENOME -r $READS -o $out_dir -t $THREADS -k 21 2>/tmp/${version}_time_${i}.txt
-        t=$(grep "wall clock" /tmp/${version}_time_${i}.txt | awk '{print $NF}' | awk -F: '{print $1*60+$2}')
-        m=$(grep "Maximum resident" /tmp/${version}_time_${i}.txt | awk '{print $NF/1024/1024}')
+        local t=$(grep "wall clock" /tmp/${version}_time_${i}.txt | awk '{print $NF}' | awk -F: '{printf "%.2f", $1*60+$2}')
+        local m=$(grep "Maximum resident" /tmp/${version}_time_${i}.txt | awk '{printf "%.2f", $NF/1024/1024}')
         times+=($t)
-        mem=$m
+        last_mem=$m
         echo "$LABEL,$version,$i,$t,$m" >> $RESULTS_CSV
     done
 
-    # compute median
-    sorted=($(printf '%s\n' "${times[@]}" | sort -n))
-    mid=$(( ${#sorted[@]} / 2 ))
-    median=${sorted[$mid]}
+    local median=$(get_median "${times[@]}")
+    echo "  → median: ${median}s, peak mem: ${last_mem}gb"
 
-    echo "${version} median time: ${median}s, peak memory: ${mem}gb"
-    echo "$median $mem"
+    # write results to temp files so parent shell can read them
+    echo "$median" > /tmp/${version}_median.txt
+    echo "$last_mem" > /tmp/${version}_mem.txt
 }
 
-old_result=$(run_bronko $OLD "old" /tmp/out_old)
-old_median=$(echo $old_result | awk '{print $1}')
-old_mem=$(echo $old_result | awk '{print $2}')
+run_bronko $OLD "old" /tmp/out_old
+run_bronko $ABLATION "ablation" /tmp/out_ablation
+run_bronko $NEW "new" /tmp/out_new
 
-ablation_result=$(run_bronko $ABLATION "ablation" /tmp/out_ablation)
-ablation_median=$(echo $ablation_result | awk '{print $1}')
-ablation_mem=$(echo $ablation_result | awk '{print $2}')
-
-new_result=$(run_bronko $NEW "new" /tmp/out_new)
-new_median=$(echo $new_result | awk '{print $1}')
-new_mem=$(echo $new_result | awk '{print $2}')
+old_median=$(cat /tmp/old_median.txt)
+old_mem=$(cat /tmp/old_mem.txt)
+ablation_median=$(cat /tmp/ablation_median.txt)
+ablation_mem=$(cat /tmp/ablation_mem.txt)
+new_median=$(cat /tmp/new_median.txt)
+new_mem=$(cat /tmp/new_mem.txt)
 
 echo ""
 echo "==============================="
