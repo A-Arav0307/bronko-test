@@ -50,10 +50,4 @@ speedup=$(echo "scale=2; $old_time / $new_time" | bc)
 echo "Speedup: ${speedup}x"
 
 echo ""
-echo "==============================="
-echo "comparing outputs..."
-echo "==============================="
-diff /tmp/out_old /tmp/out_new && echo "outputs are IDENTICAL" || echo "outputs DIFFER"
-
-echo ""
 echo "results saved to $RESULTS_CSV"
