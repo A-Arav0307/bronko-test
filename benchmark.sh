@@ -16,7 +16,7 @@ RESULTS_CSV=~/bronko_benchmark/results.csv
 RUNS=1
 
 if [ ! -f $RESULTS_CSV ]; then
-    echo "label,version,run,time_s,peak_memory_gb,variants_called,kmers_perfect,kmers_variant,kmers_unmapped,breadth,depth" > $RESULTS_CSV
+    echo "label,version,run,time_s,peak_memory_gb,variants_called,kmers_perfect,kmers_total,kmers_variant,kmers_unmapped,breadth,depth" > $RESULTS_CSV
 fi
 
 get_median() {
@@ -36,6 +36,8 @@ run_bronko() {
     echo "running ${version} on ${LABEL} (${RUNS} runs)..."
     echo "==============================="
 
+    rm -rf $out_dir && mkdir -p $out_dir
+
     local times=()
     local last_mem=0
 
@@ -51,24 +53,25 @@ run_bronko() {
     local median=$(get_median "${times[@]}")
     local log=/tmp/${version}_log_${RUNS}.txt
 
-    local kmers_perfect=$(grep "kmers perfectly" $log | grep -oP '\d+(?=/)' | head -1)
-    local kmers_total=$(grep "kmers perfectly" $log | grep -oP '(?<=/)\d+' | head -1)
-    local kmers_variant=$(grep "kmers perfectly" $log | grep -oP '\d+(?= had a variant)' | head -1)
-    local kmers_unmapped=$(grep "kmers perfectly" $log | grep -oP '\d+(?= unmapped)' | head -1)
-    local breadth=$(grep "breadth of coverage" $log | grep -oP '(?<=breadth of coverage: )[0-9.]+' | tail -1)
-    local depth=$(grep "depth of coverage" $log | grep -oP '(?<=depth of coverage: )[0-9.]+' | tail -1)
+    local kmers_perfect=$(grep "kmers perfectly" $log | awk '{print $2}' | awk -F'/' '{print $1}' | head -1)
+    local kmers_total=$(grep "kmers perfectly" $log | awk '{print $2}' | awk -F'/' '{print $2}' | head -1)
+    local kmers_variant=$(grep "had a variant" $log | awk '{print $5}' | awk -F'/' '{print $1}' | head -1)
+    local kmers_unmapped=$(grep "unmapped" $log | awk '{for(i=1;i<=NF;i++) if($i=="unmapped") print $(i-1)}' | head -1)
+    local breadth=$(grep "breadth of coverage" $log | awk -F'breadth of coverage: ' '{print $2}' | awk -F',' '{print $1}' | tail -1)
+    local depth=$(grep "depth of coverage" $log | awk -F'depth of coverage: ' '{print $2}' | awk '{print $1}' | tail -1)
     local variants=$(grep -v "^#" $out_dir/*.vcf 2>/dev/null | wc -l | tr -d ' ')
 
-    echo "$median"       > /tmp/${version}_median.txt
-    echo "$last_mem"     > /tmp/${version}_mem.txt
-    echo "$variants"     > /tmp/${version}_variants.txt
-    echo "$kmers_perfect/$kmers_total" > /tmp/${version}_kperfect.txt
-    echo "$kmers_variant"  > /tmp/${version}_kvariant.txt
-    echo "$kmers_unmapped" > /tmp/${version}_kunmapped.txt
-    echo "$breadth"      > /tmp/${version}_breadth.txt
-    echo "$depth"        > /tmp/${version}_depth.txt
+    echo "$median"        > /tmp/${version}_median.txt
+    echo "$last_mem"      > /tmp/${version}_mem.txt
+    echo "$variants"      > /tmp/${version}_variants.txt
+    echo "$kmers_perfect" > /tmp/${version}_kperfect.txt
+    echo "$kmers_total"   > /tmp/${version}_ktotal.txt
+    echo "$kmers_variant" > /tmp/${version}_kvariant.txt
+    echo "$kmers_unmapped"> /tmp/${version}_kunmapped.txt
+    echo "$breadth"       > /tmp/${version}_breadth.txt
+    echo "$depth"         > /tmp/${version}_depth.txt
 
-    echo "$LABEL,$version,1,$median,$last_mem,$variants,$kmers_perfect,$kmers_variant,$kmers_unmapped,$breadth,$depth" >> $RESULTS_CSV
+    echo "$LABEL,$version,1,$median,$last_mem,$variants,$kmers_perfect,$kmers_total,$kmers_variant,$kmers_unmapped,$breadth,$depth" >> $RESULTS_CSV
 
     echo "  → time: ${median}s | mem: ${last_mem}gb | variants: $variants | mapped: $kmers_perfect/$kmers_total | breadth: $breadth | depth: $depth"
 }
