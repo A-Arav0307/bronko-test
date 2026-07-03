@@ -42,6 +42,9 @@ pub struct BuildArgs {
     #[clap(short, long="kmer-size", default_value_t = DEFAULT_KMER_SIZE, help_heading="KMER", help="Kmer size")]
     pub kmer: usize,
 
+    #[clap(long="bucket-stride", default_value_t = DEFAULT_BUCKET_STRIDE, help_heading="KMER", help="Use every Nth bucket position (1=all buckets, 2=every other, etc.)")]
+    pub bucket_stride: usize,
+
     //OUTPUT 
     #[clap(short='o', long="output", default_value = DEFAULT_INDEX_OUTPUT, help_heading="OUTPUT", help="Name of index file (.bkdb will be added)")]
     pub output: String,
@@ -97,9 +100,12 @@ pub struct CallArgs {
     #[clap(long="use-full-kmer", default_value_t = DEFAULT_USE_FULL_KMER, help_heading="ALGORITHM", help="Use the entire kmer length for variant positions rather than having [--n-fixed] bases on each end")]
     pub use_full_kmer: bool,
 
-    //number of buckets to ignore on ends of kmers 
+    //number of buckets to ignore on ends of kmers
     #[clap(long="n-fixed", default_value_t = DEFAULT_N_FIXED, help_heading="ALGORITHM", help="Number of fixed positions at the end of each kmer that cannot contribute to pileup")]
     pub n_fixed: usize,
+
+    #[clap(long="bucket-stride", default_value_t = DEFAULT_BUCKET_STRIDE, help_heading="ALGORITHM", help="Use every Nth bucket position when mapping (must match the stride used at index build time)")]
+    pub bucket_stride: usize,
 
     //VARIANT CALLING PARAMETERS
     //minimum allele frequency to be reported

@@ -49,6 +49,11 @@ fn check_args(args: &CallArgs) {
         std::process::exit(1)
     }
 
+    if args.bucket_stride == 0 || args.bucket_stride > args.kmer {
+        error!("Bucket stride must be between 1 and k ({})", args.kmer);
+        std::process::exit(1);
+    }
+
     //check to see if inputs are valid fastq and fasta files
     for fastq_file in &args.reads {
         if !check_fastq(&fastq_file) {
@@ -296,7 +301,7 @@ pub fn call(args: CallArgs) {
     //build the indexes
     if let Some(genomes) = &args.genomes {
         info!("Creating bronko index from provided reference genomes");
-        let (index, meta): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes).unwrap_or_else(|e| {
+        let (index, meta): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride).unwrap_or_else(|e| {
             error!("{} | Reference failed to build", e);
             std::process::exit(1)
         });
@@ -322,7 +327,13 @@ pub fn call(args: CallArgs) {
             error!("Database k is not the same as provided, please set -k to {} or build a new index", {db_k});
             std::process::exit(1);
         }
-        
+
+        let db_stride = db.bucket_stride;
+        if db_stride != args.bucket_stride {
+            error!("Index bucket stride ({}) does not match --bucket-stride {}. Rebuild the index with --bucket-stride {} or adjust your call arguments.", db_stride, args.bucket_stride, db_stride);
+            std::process::exit(1);
+        }
+
         ref_index = db.global_index;
         viral_metadata = db.metadata;
     } else {
@@ -1525,15 +1536,21 @@ pub fn map_kmers(
             let (kmer_bin, rc) = canonical_kmer(kmer.as_bytes(), k);
             let buckets = assign_buckets(kmer_bin, k);
 
-            let filtered_buckets = if args.use_full_kmer {
-                buckets
-            } else {
-                let len = buckets.len();
-                if args.n_fixed * 2 + 1 >= len {
-                    vec![] 
+            let filtered_buckets: Vec<u64> = {
+                let (start, end) = if args.use_full_kmer {
+                    (0, buckets.len())
                 } else {
-                    buckets[args.n_fixed..len - args.n_fixed - 1].to_vec()
-                }
+                    let len = buckets.len();
+                    if args.n_fixed * 2 + 1 >= len {
+                        (0, 0)
+                    } else {
+                        (args.n_fixed, len - args.n_fixed - 1)
+                    }
+                };
+                buckets[start..end].iter().enumerate()
+                    .filter(|(i, _)| (i + start) % args.bucket_stride == 0)
+                    .map(|(_, &b)| b)
+                    .collect()
             };
 
             let num_buckets_perfect = filtered_buckets.len();

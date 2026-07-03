@@ -24,6 +24,7 @@ use rayon::prelude::*;
 #[derive(Encode, Decode)]
 pub struct BronkoIndex {
     pub k: usize,
+    pub bucket_stride: usize,
     pub global_index: FxHashMap<u64, Vec<BucketInfo>>,
     pub metadata: ViralMetadata,
 }
@@ -82,7 +83,10 @@ fn check_args(args: &BuildArgs) {
         std::process::exit(1)
     }
 
-    
+    if args.bucket_stride == 0 || args.bucket_stride > args.kmer {
+        error!("Bucket stride must be between 1 and k ({})", args.kmer);
+        std::process::exit(1);
+    }
 
     for fasta_file in &args.genomes {
         if !check_fasta(&fasta_file){
@@ -177,7 +181,7 @@ pub fn build(args: BuildArgs) {
 
 
     //build the indexes
-    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes).unwrap_or_else(|e| {
+    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride).unwrap_or_else(|e| {
         error!("{} | Reference failed to build", e);
         std::process::exit(1)
     });
@@ -185,7 +189,7 @@ pub fn build(args: BuildArgs) {
 
     let output_path = &format!("{}{}", &args.output, ".bkdb");
     info!("Saving index to {}", output_path);
-    save_index(output_path, args.kmer, ref_index, viral_metadata).unwrap_or_else(|e|{
+    save_index(output_path, args.kmer, args.bucket_stride, ref_index, viral_metadata).unwrap_or_else(|e|{
         error!("{} | Unable to save index", e);
         std::process::exit(1);
     });
@@ -194,6 +198,7 @@ pub fn build(args: BuildArgs) {
 pub fn save_index(
     file_path: &str,
     k: usize,
+    bucket_stride: usize,
     global_index: FxHashMap<u64, Vec<BucketInfo>>,
     metadata: ViralMetadata,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -205,6 +210,7 @@ pub fn save_index(
 
     let db = BronkoIndex {
         k,
+        bucket_stride,
         global_index,
         metadata,
     };
@@ -216,7 +222,8 @@ pub fn save_index(
 
 pub fn build_indexes(
     k: usize,
-    genomes: &[String]
+    genomes: &[String],
+    bucket_stride: usize,
 ) -> Result<(FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata), Error> {
     info!("Building indexes from fasta files");
 
@@ -226,8 +233,6 @@ pub fn build_indexes(
         .enumerate()
         .map(|(file_id, file_path)| {
             trace!("{}: {}", file_id, file_path);
-            let mut local_index: FxHashMap<u64, Vec<BucketInfo>> = FxHashMap::default();
-            let mut sequences: Vec<SeqMeta> = Vec::new();
 
             let mut reader = parse_fastx_file(file_path).unwrap_or_else(|e| {
                 error!("{} | Failed to parse fasta file: {}", e, file_path);
@@ -261,7 +266,7 @@ pub fn build_indexes(
                 sequences.push(SeqMeta {
                     name: seq_name.clone(),
                     len: seq_len,
-                    seq: seq.to_vec(), 
+                    seq: seq.to_vec(),
                 });
 
                 if seq_len >= k {
@@ -271,6 +276,9 @@ pub fn build_indexes(
                         let buckets = assign_buckets(kmer_bin, k);
 
                         for (j, bucket_id) in buckets.iter().enumerate() {
+                            if j % bucket_stride != 0 {
+                                continue;
+                            }
                             local_index.entry(*bucket_id).or_default().push(BucketInfo {
                                 file_id: file_id as u16,
                                 seq_id,

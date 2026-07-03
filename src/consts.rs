@@ -18,6 +18,7 @@ pub const DEFAULT_CONSENSUS: bool = false; //return consensus sequences for each
 pub const DEFAULT_LINE_WRAP: usize = 80; //number of characters on each line in the fasta consensus sequence
 pub const DEFAULT_N_FIXED: usize = 2;   //number of fixed bases in the kmer
 pub const DEFAULT_USE_FULL_KMER: bool = false;  //use the full length of the kmer
+pub const DEFAULT_BUCKET_STRIDE: usize = 2; // use every Nth bucket (2 = every other)
 pub const DEFAULT_MIN_DEPTH: usize = MIN_KMER_COUNT*100;
 pub const DEFAULT_INDEX_OUTPUT: &str = "bronko";
 pub const DEFAULT_OUT_FOLDER: &str = "bronko_output";

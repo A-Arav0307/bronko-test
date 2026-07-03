@@ -41,3 +41,6 @@ criterion = { version = "0.5", features = ["html_reports"] }
 [[bench]]
 name = "rc_bench"
 harness = false
+
+[profile.release]
+debug = true
