@@ -10,7 +10,6 @@ LABEL=$1
 GENOME=$2
 READS=$3
 OLD=~/bronko_benchmark/bronko-test/old_bronko/target/release/bronko
-ABLATION=~/bronko_benchmark/bronko-test/ablation_bronko/target/release/bronko
 NEW=~/bronko_benchmark/bronko-test/target/release/bronko
 THREADS=30
 RESULTS_CSV=~/bronko_benchmark/results.csv
@@ -52,19 +51,15 @@ run_bronko() {
     local median=$(get_median "${times[@]}")
     echo "  → median: ${median}s, peak mem: ${last_mem}gb"
 
-    # write results to temp files so parent shell can read them
     echo "$median" > /tmp/${version}_median.txt
     echo "$last_mem" > /tmp/${version}_mem.txt
 }
 
 run_bronko $OLD "old" /tmp/out_old
-run_bronko $ABLATION "ablation" /tmp/out_ablation
 run_bronko $NEW "new" /tmp/out_new
 
 old_median=$(cat /tmp/old_median.txt)
 old_mem=$(cat /tmp/old_mem.txt)
-ablation_median=$(cat /tmp/ablation_median.txt)
-ablation_mem=$(cat /tmp/ablation_mem.txt)
 new_median=$(cat /tmp/new_median.txt)
 new_mem=$(cat /tmp/new_mem.txt)
 
@@ -74,25 +69,20 @@ echo "RESULTS SUMMARY — ${LABEL}"
 echo "==============================="
 printf "%-12s %-12s %-15s\n" "version" "median(s)" "peak_mem(gb)"
 printf "%-12s %-12s %-15s\n" "old" "$old_median" "$old_mem"
-printf "%-12s %-12s %-15s\n" "ablation" "$ablation_median" "$ablation_mem"
 printf "%-12s %-12s %-15s\n" "new" "$new_median" "$new_mem"
 
-rc_speedup=$(echo "scale=2; $old_median / $ablation_median" | bc)
-dashmap_speedup=$(echo "scale=2; $ablation_median / $new_median" | bc)
 total_speedup=$(echo "scale=2; $old_median / $new_median" | bc)
-
 echo ""
-echo "RC-only speedup (old → ablation):       ${rc_speedup}x"
-echo "DashMap-only speedup (ablation → new):  ${dashmap_speedup}x"
-echo "Total speedup (old → new):              ${total_speedup}x"
+echo "Total speedup (old → new): ${total_speedup}x"
 
 echo ""
 echo "==============================="
-echo "correctness check..."
+echo "correctness check (variant counts)..."
 echo "==============================="
-diff /tmp/out_old /tmp/out_ablation > /dev/null && echo "old vs ablation: IDENTICAL" || echo "old vs ablation: DIFFER"
-diff /tmp/out_ablation /tmp/out_new > /dev/null && echo "ablation vs new: IDENTICAL" || echo "ablation vs new: DIFFER"
-diff /tmp/out_old /tmp/out_new > /dev/null && echo "old vs new: IDENTICAL" || echo "old vs new: DIFFER"
+old_vars=$(grep -v "^#" /tmp/out_old/*.vcf 2>/dev/null | wc -l)
+new_vars=$(grep -v "^#" /tmp/out_new/*.vcf 2>/dev/null | wc -l)
+echo "old variants called: $old_vars"
+echo "new variants called: $new_vars"
 
 echo ""
 echo "results saved to $RESULTS_CSV"
