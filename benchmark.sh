@@ -13,7 +13,7 @@ OLD=~/bronko_benchmark/bronko-test/old_bronko/target/release/bronko
 NEW=~/bronko_benchmark/bronko-test/target/release/bronko
 THREADS=30
 RESULTS_CSV=~/bronko_benchmark/results.csv
-RUNS=5
+RUNS=1
 
 if [ ! -f $RESULTS_CSV ]; then
     echo "label,version,run,time_s,peak_memory_gb" > $RESULTS_CSV
