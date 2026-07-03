@@ -53,10 +53,10 @@ run_bronko() {
     local median=$(get_median "${times[@]}")
     local log=/tmp/${version}_log_${RUNS}.txt
 
-    local kmers_perfect=$(grep "kmers perfectly" $log | awk '{print $2}' | awk -F'/' '{print $1}' | head -1)
-    local kmers_total=$(grep "kmers perfectly" $log | awk '{print $2}' | awk -F'/' '{print $2}' | head -1)
-    local kmers_variant=$(grep "had a variant" $log | awk '{print $5}' | awk -F'/' '{print $1}' | head -1)
-    local kmers_unmapped=$(grep "unmapped" $log | awk '{for(i=1;i<=NF;i++) if($i=="unmapped") print $(i-1)}' | head -1)
+    local kmers_perfect=$(grep "kmers perfectly" $log | grep -oE '[0-9]+/[0-9]+' | head -1 | cut -d'/' -f1)
+    local kmers_total=$(grep "kmers perfectly" $log | grep -oE '[0-9]+/[0-9]+' | head -1 | cut -d'/' -f2)
+    local kmers_variant=$(grep "had a variant" $log | awk -F',' '{print $2}' | grep -oE '[0-9]+' | head -1)
+    local kmers_unmapped=$(grep "unmapped" $log | awk -F',' '{print $3}' | grep -oE '[0-9]+' | head -1)
     local breadth=$(grep "breadth of coverage" $log | awk -F'breadth of coverage: ' '{print $2}' | awk -F',' '{print $1}' | tail -1)
     local depth=$(grep "depth of coverage" $log | awk -F'depth of coverage: ' '{print $2}' | awk '{print $1}' | tail -1)
     local variants=$(grep -v "^#" $out_dir/*.vcf 2>/dev/null | wc -l | tr -d ' ')
