@@ -1,0 +1,43 @@
+[package]
+name = "bronko"
+version = "0.1.4"
+edition = "2021"
+authors = [
+    "Ryan Doughty <rdd4@rice.edu>",
+    "Michael Tisza <michael.tisza@bcm.edu>",
+    "Todd Treangen <treangen@rice.edu>",
+]
+license = "MIT"
+description = "ultrafast alignment-free detection of viral genome variation"
+readme = "README.md"
+keywords = ["bioinformatics", "genomics", "sequencing", "k-mer", "viruses"]
+categories = ["command-line-utilities", "science"]
+repository = "https://github.com/treangenlab/bronko"
+homepage = "https://github.com/treangenlab/bronko"
+
+[dependencies]
+needletail = "0.6.0"
+clap = { version = "4", features = ["derive"] }
+log = "0"
+simple_logger = "3"
+memory-stats = "1.2.0"
+crossbeam-channel = "0.5.15"
+fxhash = "0.2.1"
+num_cpus = "1.17.0"
+rayon = "1.10.0"
+anyhow = "1.0.98"
+crossbeam = "0.8.4"
+rustc-hash = "2.1.1"
+dashmap = "6.1.0"
+bincode = "2.0.1"
+statrs = "0.18.0"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+tempfile = "3.10"
+serial_test = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "rc_bench"
+harness = false
