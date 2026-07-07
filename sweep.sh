@@ -23,6 +23,24 @@ genome_len() {
     grep -v '^>' $1 | tr -d '\n' | wc -c
 }
 
+build_summary() {
+    {
+        echo "label,version,length_bp,time_s,peak_memory_gb"
+        awk -F, '
+            NR==FNR { if (FNR>1) len[$1]=$2; next }
+            FNR==1 { next }
+            { key=$1 SUBSEP $2; time[key]=$4; mem[key]=$5; if (!(key in seen)) { order[++n]=key; seen[key]=1 } }
+            END {
+                for (i=1; i<=n; i++) {
+                    key=order[i]; split(key, a, SUBSEP); label=a[1]; version=a[2]
+                    if (label in len) print label","version","len[label]","time[key]","mem[key]
+                }
+            }
+        ' $MANIFEST $BENCH_DIR/results.csv | sort -t, -k3,3n -k2,2
+    } > $BENCH_DIR/sweep_summary.csv
+    echo "saved $BENCH_DIR/sweep_summary.csv"
+}
+
 if [ ! -f $BENCH_DIR/genome1m.fasta ]; then
     echo "downloading 1M reference genome (Rickettsia prowazekii Madrid E, GCF_000195735.1)..."
     download_genome GCF_000195735.1 $BENCH_DIR/genome1m.fasta
@@ -54,4 +72,5 @@ cd $BENCH_DIR/bronko-test
 ./benchmark.sh 7M   $BENCH_DIR/genome7m.fasta   $BENCH_DIR/genome7m_r1.fq  $BENCH_DIR/genome7m_r2.fq  $BENCH_DIR/genome7m_ground_truth.txt
 ./benchmark.sh 12M  $BENCH_DIR/yeast.fasta      $BENCH_DIR/yeast_r1.fq     $BENCH_DIR/yeast_r2.fq     $BENCH_DIR/yeast_ground_truth.txt
 
+build_summary
 echo "sweep complete."
