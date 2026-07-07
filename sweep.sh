@@ -53,6 +53,12 @@ if [ ! -f $BENCH_DIR/genome2.5m.fasta ]; then
     sim_reads $BENCH_DIR/genome2.5m.fasta $BENCH_DIR/genome2.5m_r1.fq $BENCH_DIR/genome2.5m_r2.fq $BENCH_DIR/genome2.5m_ground_truth.txt
 fi
 
+if [ ! -f $BENCH_DIR/genome5m.fasta ]; then
+    echo "downloading 5M reference genome (Klebsiella pneumoniae MGH 78578, GCF_000016305.1)..."
+    download_genome GCF_000016305.1 $BENCH_DIR/genome5m.fasta
+    sim_reads $BENCH_DIR/genome5m.fasta $BENCH_DIR/genome5m_r1.fq $BENCH_DIR/genome5m_r2.fq $BENCH_DIR/genome5m_ground_truth.txt
+fi
+
 if [ ! -f $BENCH_DIR/genome7m.fasta ]; then
     echo "downloading 7M reference genome (GCF_000283295.1)..."
     download_genome GCF_000283295.1 $BENCH_DIR/genome7m.fasta
@@ -61,14 +67,14 @@ fi
 
 echo "1M,$(genome_len $BENCH_DIR/genome1m.fasta)" >> $MANIFEST
 echo "2.5M,$(genome_len $BENCH_DIR/genome2.5m.fasta)" >> $MANIFEST
-echo "4M,$(genome_len $BENCH_DIR/ecoli.fasta)" >> $MANIFEST
+echo "5M,$(genome_len $BENCH_DIR/genome5m.fasta)" >> $MANIFEST
 echo "7M,$(genome_len $BENCH_DIR/genome7m.fasta)" >> $MANIFEST
 echo "12M,$(genome_len $BENCH_DIR/yeast.fasta)" >> $MANIFEST
 
 cd $BENCH_DIR/bronko-test
 ./benchmark.sh 1M   $BENCH_DIR/genome1m.fasta   $BENCH_DIR/genome1m_r1.fq   $BENCH_DIR/genome1m_r2.fq   $BENCH_DIR/genome1m_ground_truth.txt
 ./benchmark.sh 2.5M $BENCH_DIR/genome2.5m.fasta $BENCH_DIR/genome2.5m_r1.fq $BENCH_DIR/genome2.5m_r2.fq $BENCH_DIR/genome2.5m_ground_truth.txt
-./benchmark.sh 4M   $BENCH_DIR/ecoli.fasta      $BENCH_DIR/ecoli_r1.fq     $BENCH_DIR/ecoli_r2.fq     $BENCH_DIR/ecoli_ground_truth.txt
+./benchmark.sh 5M   $BENCH_DIR/genome5m.fasta   $BENCH_DIR/genome5m_r1.fq  $BENCH_DIR/genome5m_r2.fq  $BENCH_DIR/genome5m_ground_truth.txt
 ./benchmark.sh 7M   $BENCH_DIR/genome7m.fasta   $BENCH_DIR/genome7m_r1.fq  $BENCH_DIR/genome7m_r2.fq  $BENCH_DIR/genome7m_ground_truth.txt
 ./benchmark.sh 12M  $BENCH_DIR/yeast.fasta      $BENCH_DIR/yeast_r1.fq     $BENCH_DIR/yeast_r2.fq     $BENCH_DIR/yeast_ground_truth.txt
 
