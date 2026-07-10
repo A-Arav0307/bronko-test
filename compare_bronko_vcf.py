@@ -37,13 +37,20 @@ def parse_ground_truth(path):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("usage: python3 compare_bronko_vcf.py <bronko_output.vcf> <phastsim_ground_truth.csv>")
+    if len(sys.argv) not in (3, 4):
+        print("usage: python3 compare_bronko_vcf.py <bronko_output.vcf> <phastsim_ground_truth.csv> [min_af_filter]")
         sys.exit(1)
 
     vcf_path, truth_path = sys.argv[1], sys.argv[2]
+    min_af_filter = float(sys.argv[3]) if len(sys.argv) == 4 else None
+
     called = parse_vcf(vcf_path)
     truth = parse_ground_truth(truth_path)
+
+    if min_af_filter is not None:
+        called = {k: v for k, v in called.items() if v["af"] is not None and v["af"] > min_af_filter}
+        truth = {k: v for k, v in truth.items() if v["af"] > min_af_filter}
+        print(f"applied AF > {min_af_filter} filter: {len(called)} called, {len(truth)} true variants remain")
 
     called_keys = set(called)
     truth_keys = set(truth)
