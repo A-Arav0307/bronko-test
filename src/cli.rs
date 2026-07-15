@@ -45,7 +45,10 @@ pub struct BuildArgs {
     #[clap(long="bucket-stride", default_value_t = DEFAULT_BUCKET_STRIDE, help_heading="KMER", help="Use every Nth bucket position (1=all buckets, 2=every other, etc.)")]
     pub bucket_stride: usize,
 
-    //OUTPUT 
+    #[clap(long="bucket-pattern", help_heading="KMER", help="Explicit keep/skip pattern over bucket positions, e.g. \"##_\" = keep,keep,skip repeating. Overrides --bucket-stride if set.")]
+    pub bucket_pattern: Option<String>,
+
+    //OUTPUT
     #[clap(short='o', long="output", default_value = DEFAULT_INDEX_OUTPUT, help_heading="OUTPUT", help="Name of index file (.bkdb will be added)")]
     pub output: String,
 
@@ -106,6 +109,9 @@ pub struct CallArgs {
 
     #[clap(long="bucket-stride", default_value_t = DEFAULT_BUCKET_STRIDE, help_heading="ALGORITHM", help="Use every Nth bucket position when mapping (must match the stride used at index build time)")]
     pub bucket_stride: usize,
+
+    #[clap(long="bucket-pattern", help_heading="ALGORITHM", help="Explicit keep/skip pattern over bucket positions, e.g. \"##_\" = keep,keep,skip repeating. Must match the pattern used at index build time. Overrides --bucket-stride if set.")]
+    pub bucket_pattern: Option<String>,
 
     //VARIANT CALLING PARAMETERS
     //minimum allele frequency to be reported

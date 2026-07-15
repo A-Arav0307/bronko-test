@@ -44,6 +44,20 @@ pub fn assign_buckets(kmer: u64, k: usize) -> Vec<u64> {
     buckets[..k].to_vec()
 }
 
+// builds a repeating keep/skip mask over bucket positions.
+// if `pattern` is given (e.g. "##_" = keep,keep,skip), it's parsed directly ('#'=keep, '_'=skip).
+// otherwise falls back to the plain stride behavior (keep position 0 of every `stride`-length cycle),
+// which is exactly equivalent to the old `j % stride == 0` check.
+pub fn bucket_keep_mask(pattern: &Option<String>, stride: usize) -> Vec<bool> {
+    if let Some(p) = pattern {
+        p.chars().map(|c| c == '#').collect()
+    } else {
+        let mut mask = vec![false; stride.max(1)];
+        mask[0] = true;
+        mask
+    }
+}
+
 pub fn nt_to_bits(nt: u8) -> u8 {
     match nt {
         b'A' | b'a' => 0,

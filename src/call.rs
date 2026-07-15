@@ -54,6 +54,17 @@ fn check_args(args: &CallArgs) {
         std::process::exit(1);
     }
 
+    if let Some(pattern) = &args.bucket_pattern {
+        if pattern.is_empty() || !pattern.chars().all(|c| c == '#' || c == '_') {
+            error!("--bucket-pattern must be non-empty and contain only '#' (keep) and '_' (skip)");
+            std::process::exit(1);
+        }
+        if !pattern.contains('#') {
+            error!("--bucket-pattern must keep at least one position");
+            std::process::exit(1);
+        }
+    }
+
     //check to see if inputs are valid fastq and fasta files
     for fastq_file in &args.reads {
         if !check_fastq(&fastq_file) {
@@ -301,7 +312,7 @@ pub fn call(args: CallArgs) {
     //build the indexes
     if let Some(genomes) = &args.genomes {
         info!("Creating bronko index from provided reference genomes");
-        let (index, meta): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride).unwrap_or_else(|e| {
+        let (index, meta): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride, &args.bucket_pattern).unwrap_or_else(|e| {
             error!("{} | Reference failed to build", e);
             std::process::exit(1)
         });
@@ -329,8 +340,9 @@ pub fn call(args: CallArgs) {
         }
 
         let db_stride = db.bucket_stride;
-        if db_stride != args.bucket_stride {
-            error!("Index bucket stride ({}) does not match --bucket-stride {}. Rebuild the index with --bucket-stride {} or adjust your call arguments.", db_stride, args.bucket_stride, db_stride);
+        let db_pattern = db.bucket_pattern.clone();
+        if db_pattern != args.bucket_pattern || (db_pattern.is_none() && db_stride != args.bucket_stride) {
+            error!("Index bucket stride/pattern ({:?}, {}) does not match --bucket-stride {} --bucket-pattern {:?}. Rebuild the index to match or adjust your call arguments.", db_pattern, db_stride, args.bucket_stride, args.bucket_pattern);
             std::process::exit(1);
         }
 
@@ -1518,6 +1530,7 @@ pub fn map_kmers(
     let results: DashMap<u16, (usize, usize, usize)> = DashMap::new();
     
     let chunk_size = if ((kmers.len() / threads) as usize) < 10000 { max(kmers.len() / threads, 100) as usize } else { 10000 };
+    let keep_mask = bucket_keep_mask(&args.bucket_pattern, args.bucket_stride);
 
     kmers.par_chunks(chunk_size).for_each(|chunk| {
 
@@ -1548,7 +1561,7 @@ pub fn map_kmers(
                     }
                 };
                 buckets[start..end].iter().enumerate()
-                    .filter(|(i, _)| (i + start) % args.bucket_stride == 0)
+                    .filter(|(i, _)| keep_mask[(i + start) % keep_mask.len()])
                     .map(|(_, &b)| b)
                     .collect()
             };

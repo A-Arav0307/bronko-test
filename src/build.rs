@@ -25,6 +25,7 @@ use rayon::prelude::*;
 pub struct BronkoIndex {
     pub k: usize,
     pub bucket_stride: usize,
+    pub bucket_pattern: Option<String>,
     pub global_index: FxHashMap<u64, Vec<BucketInfo>>,
     pub metadata: ViralMetadata,
 }
@@ -86,6 +87,17 @@ fn check_args(args: &BuildArgs) {
     if args.bucket_stride == 0 || args.bucket_stride > args.kmer {
         error!("Bucket stride must be between 1 and k ({})", args.kmer);
         std::process::exit(1);
+    }
+
+    if let Some(pattern) = &args.bucket_pattern {
+        if pattern.is_empty() || !pattern.chars().all(|c| c == '#' || c == '_') {
+            error!("--bucket-pattern must be non-empty and contain only '#' (keep) and '_' (skip)");
+            std::process::exit(1);
+        }
+        if !pattern.contains('#') {
+            error!("--bucket-pattern must keep at least one position");
+            std::process::exit(1);
+        }
     }
 
     for fasta_file in &args.genomes {
@@ -181,7 +193,7 @@ pub fn build(args: BuildArgs) {
 
 
     //build the indexes
-    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride).unwrap_or_else(|e| {
+    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride, &args.bucket_pattern).unwrap_or_else(|e| {
         error!("{} | Reference failed to build", e);
         std::process::exit(1)
     });
@@ -189,7 +201,7 @@ pub fn build(args: BuildArgs) {
 
     let output_path = &format!("{}{}", &args.output, ".bkdb");
     info!("Saving index to {}", output_path);
-    save_index(output_path, args.kmer, args.bucket_stride, ref_index, viral_metadata).unwrap_or_else(|e|{
+    save_index(output_path, args.kmer, args.bucket_stride, args.bucket_pattern.clone(), ref_index, viral_metadata).unwrap_or_else(|e|{
         error!("{} | Unable to save index", e);
         std::process::exit(1);
     });
@@ -199,6 +211,7 @@ pub fn save_index(
     file_path: &str,
     k: usize,
     bucket_stride: usize,
+    bucket_pattern: Option<String>,
     global_index: FxHashMap<u64, Vec<BucketInfo>>,
     metadata: ViralMetadata,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -211,6 +224,7 @@ pub fn save_index(
     let db = BronkoIndex {
         k,
         bucket_stride,
+        bucket_pattern,
         global_index,
         metadata,
     };
@@ -224,8 +238,10 @@ pub fn build_indexes(
     k: usize,
     genomes: &[String],
     bucket_stride: usize,
+    bucket_pattern: &Option<String>,
 ) -> Result<(FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata), Error> {
     info!("Building indexes from fasta files");
+    let keep_mask = bucket_keep_mask(bucket_pattern, bucket_stride);
 
     // use map - reduce framework from rayon to process and integrate all files into single index
     let (global_index, all_files) = genomes
@@ -276,7 +292,7 @@ pub fn build_indexes(
                         let buckets = assign_buckets(kmer_bin, k);
 
                         for (j, bucket_id) in buckets.iter().enumerate() {
-                            if j % bucket_stride != 0 {
+                            if !keep_mask[j % keep_mask.len()] {
                                 continue;
                             }
                             local_index.entry(*bucket_id).or_default().push(BucketInfo {
