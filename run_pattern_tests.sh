@@ -7,6 +7,13 @@ PATTERNS=(
     "hash_underscore=#_"
     "hh_underscore=##_"
     "random_gap1to3_seed42=#__###__#_####__##__#__#__##__#_######__#__##__##__#__#__#__"
+    "sparse_1in3=#__"
+    "dense_3in4=###_"
+    "clustered_2in4=##__"
+    "sparse_1in4=#___"
+    "random_gap1to2_seed7=#_##_####_#####_#_####_#####_#####_#_###_####_#####_#_#_#_#_"
+    "random_gap1to4_seed99=#___#___#_#_#_#_#_##__#___##___#_#___#_#__#___#_#_#___#_#__#"
+    "random_gap2to4_seed123=#_#__#_#__#__#_#_#__#___#___#__#__#_#_#_#__#___#__#___#_#_#_"
 )
 
 BENCH_DIR=~/bronko_benchmark/phastsim-run
