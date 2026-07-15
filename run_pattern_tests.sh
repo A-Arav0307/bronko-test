@@ -2,7 +2,12 @@
 set -e
 
 # add new patterns here to test them - '#' = keep, '_' = skip, repeats cyclically
-PATTERNS=("#_" "##_")
+# format: "label=pattern" (label is used for the output dir name, keep it short/safe)
+PATTERNS=(
+    "hash_underscore=#_"
+    "hh_underscore=##_"
+    "random_gap1to3_seed42=#__###__#_####__##__#__#__##__#_######__#__##__##__#__#__#__"
+)
 
 BENCH_DIR=~/bronko_benchmark/phastsim-run
 OLD_BIN=~/bronko_benchmark/bronko-test/old_bronko/target/release/bronko
@@ -52,9 +57,11 @@ run_and_measure "old" $OLD_BIN
 run_and_measure "threaded" $THREADED_BIN
 
 # --- pattern sweep on the current (bucket-pattern-experiment) binary ---
-for p in "${PATTERNS[@]}"; do
-    safe_label=$(echo "$p" | tr -d '\n')
-    run_and_measure "pattern_${safe_label}" $PATTERN_BIN --bucket-pattern "$p"
+for entry in "${PATTERNS[@]}"; do
+    label="${entry%%=*}"
+    pattern="${entry#*=}"
+    echo "pattern for '${label}': ${pattern}"
+    run_and_measure "pattern_${label}" $PATTERN_BIN --bucket-pattern "$pattern"
 done
 
 echo "==============================="
