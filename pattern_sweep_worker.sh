@@ -104,7 +104,7 @@ for ((k=JOB_ID; k<TOTAL; k+=NUM_JOBS)); do
     f1=$(python3 -c "p=$precision; r=$recall; print(f'{2*p*r/(p+r):.4f}' if (p+r)>0 else '0.0000')")
 
     echo "${genome_id},${pattern_idx},${pattern},${t},${m},${precision},${recall},${f1}" >> "$RESULTS_CSV"
-    echo "[job ${JOB_ID}] genome $((genome_idx + 1))/${NUM_GENOMES} (${genome_id}) pattern $((pattern_idx + 1))/${NUM_PATTERNS}: time=${t}s mem=${m}gb precision=${precision} recall=${recall} f1=${f1}"
+    echo "[job ${JOB_ID}] genome $((genome_idx + 1))/${NUM_GENOMES} (${genome_id}) pattern $((pattern_idx + 1))/${NUM_PATTERNS} [${pattern}]: time=${t}s mem=${m}gb precision=${precision} recall=${recall} f1=${f1}"
 
     completed_this_run=$((completed_this_run + 1))
     if (( completed_this_run % PUSH_EVERY == 0 )); then

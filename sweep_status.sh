@@ -9,23 +9,24 @@ NUM_JOBS=${1:-10}
 echo "==============================="
 echo "per-job current position"
 echo "==============================="
-printf "%-6s %-10s %-45s %-10s %s\n" "JOB" "GENOME#" "GENOME ID" "PATTERN#" "LAST RESULT"
+printf "%-6s %-10s %-45s %-10s %-55s %s\n" "JOB" "GENOME#" "GENOME ID" "PATTERN#" "PATTERN" "LAST RESULT"
 for ((job_id=0; job_id<NUM_JOBS; job_id++)); do
     log="${LOG_DIR}/job${job_id}.log"
     if [ ! -f "$log" ]; then
-        printf "%-6s %-10s %-45s %-10s %s\n" "$job_id" "-" "(no log yet)" "-" "-"
+        printf "%-6s %-10s %-45s %-10s %-55s %s\n" "$job_id" "-" "(no log yet)" "-" "-" "-"
         continue
     fi
     last_line=$(grep "^\[job ${job_id}\] genome" "$log" | tail -1)
     if [ -z "$last_line" ]; then
-        printf "%-6s %-10s %-45s %-10s %s\n" "$job_id" "-" "(starting...)" "-" "-"
+        printf "%-6s %-10s %-45s %-10s %-55s %s\n" "$job_id" "-" "(starting...)" "-" "-" "-"
         continue
     fi
-    genome_num=$(echo "$last_line" | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+): (.*)$/\1/')
-    genome_id=$(echo "$last_line" | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+): (.*)$/\2/')
-    pattern_num=$(echo "$last_line" | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+): (.*)$/\3/')
-    metrics=$(echo "$last_line" | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+): (.*)$/\4/')
-    printf "%-6s %-10s %-45s %-10s %s\n" "$job_id" "$genome_num" "$genome_id" "$pattern_num" "$metrics"
+    genome_num=$(echo "$last_line"    | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+) \[([^]]*)\]: (.*)$/\1/')
+    genome_id=$(echo "$last_line"     | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+) \[([^]]*)\]: (.*)$/\2/')
+    pattern_num=$(echo "$last_line"   | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+) \[([^]]*)\]: (.*)$/\3/')
+    pattern_str=$(echo "$last_line"   | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+) \[([^]]*)\]: (.*)$/\4/')
+    metrics=$(echo "$last_line"       | sed -E 's/^\[job [0-9]+\] genome ([0-9]+\/[0-9]+) \(([^)]+)\) pattern ([0-9]+\/[0-9]+) \[([^]]*)\]: (.*)$/\5/')
+    printf "%-6s %-10s %-45s %-10s %-55s %s\n" "$job_id" "$genome_num" "$genome_id" "$pattern_num" "$pattern_str" "$metrics"
 done
 
 echo ""

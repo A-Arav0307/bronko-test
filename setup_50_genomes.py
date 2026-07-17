@@ -17,9 +17,7 @@ print(f"reference: {ref_record.id}, {ref_len} bp")
 records = list(SeqIO.parse(GENOMES_PATH, "fasta"))
 print(f"loaded {len(records)} candidate genomes")
 
-# compute diff count vs reference for each candidate; the one with (near) zero
-# diffs is the duplicate leaf from Parsnp's auto-picked reference appearing
-# twice in the tree - exclude it to get exactly 50 meaningful genomes.
+# compute diff count vs reference for each candidate
 scored = []
 for r in records:
     seq = str(r.seq).upper()
@@ -29,13 +27,32 @@ for r in records:
     diffs = sum(1 for a, b in zip(ref_seq, seq) if a != b)
     scored.append((diffs, r))
 
-scored.sort(key=lambda x: x[0])
-excluded_diffs, excluded_record = scored[0]
-print(f"excluding duplicate-reference leaf: {excluded_record.id} ({excluded_diffs} diffs from reference)")
+# Parsnp's auto-picked reference genome appears TWICE in the tree - once as the
+# ".ref" backbone, once as a regular query (since it was also one of the 50 real
+# input genomes). Both leaves evolve from ~zero branch length, so both show up
+# with near-zero diffs here. Detect the pair by matching IDs after stripping a
+# trailing ".ref", and keep only the more-evolved member of each such pair -
+# dropping both would leave only 49 genomes, but keeping both leaves a
+# near-mutation-free duplicate in the set (the actual bug we hit).
+by_normalized_id = {}
+for diffs, r in scored:
+    norm_id = r.id[:-4] if r.id.endswith(".ref") else r.id
+    by_normalized_id.setdefault(norm_id, []).append((diffs, r))
 
-selected = scored[1:51]
+selected = []
+for norm_id, group in by_normalized_id.items():
+    if len(group) > 1:
+        group.sort(key=lambda x: x[0])
+        dropped_diffs, dropped_record = group[0]
+        kept_diffs, kept_record = group[-1]
+        print(f"duplicate pair detected for {norm_id}: dropping {dropped_record.id} ({dropped_diffs} diffs), keeping {kept_record.id} ({kept_diffs} diffs)")
+        selected.append((kept_diffs, kept_record))
+    else:
+        selected.append(group[0])
+
+selected.sort(key=lambda x: x[0])
 if len(selected) != 50:
-    print(f"WARNING: expected 50 genomes after exclusion, got {len(selected)}")
+    print(f"WARNING: expected 50 genomes after de-duplication, got {len(selected)}")
 
 manifest_lines = []
 for diffs, r in selected:
