@@ -59,12 +59,15 @@ run_and_measure() {
     shift 2
     local extra_args=("$@")
 
-    local out_dir="single_genome_wgsim_out_${label}"
+    local out_dir="single_genome_wgsim_out_${GENOME_ID:-default}_${label}"
     local time_log="time_${label}.log"
 
     echo "==============================="
     echo "running ${label}..."
     echo "==============================="
+
+    rm -rf "$out_dir"
+    mkdir -p "$out_dir"
 
     /usr/bin/time -v $binary call -g $GENOME -1 $R1 -2 $R2 -o $out_dir -t 30 "${extra_args[@]}" 2> $time_log
 
