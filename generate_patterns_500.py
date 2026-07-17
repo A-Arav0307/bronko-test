@@ -4,35 +4,40 @@ OUT = "patterns_500.txt"
 
 patterns = []
 
-# 450 structured patterns: systematic grid of (run_length, gap_length) pairs.
+# 400 structured patterns: systematic grid of (run_length, gap_length) pairs.
 # pattern = '#' * run + '_' * gap, repeated by the cyclic mask lookup in bronko.
-# run in 1..15, gap in 1..30 -> 450 combinations, all small/bounded (max gap = 30,
-# nothing like skip-by-1000), density ranges from 1/31 (~3%) to 15/16 (~94%).
-for run in range(1, 16):
-    for gap in range(1, 31):
+# run in 1..20, gap in 1..20 -> 400 combinations. Both bounded well under k=21
+# (the default k-mer size), so kept positions stay close together - no pattern
+# skips further than 20 positions between hits. Density ranges 1/21 (~5%) to
+# 20/21 (~95%).
+for run in range(1, 21):
+    for gap in range(1, 21):
         patterns.append(("#" * run) + ("_" * gap))
 
-assert len(patterns) == 450
+assert len(patterns) == 400
 
-# 50 random-gap patterns: consecutive kept positions spaced a random 1-3 apart
-# (same style as the earlier random_gap1to3 pattern), each with a distinct seed
-for i in range(50):
+# 100 random-gap patterns: consecutive kept positions spaced a random amount
+# apart, still small/close-together (max gap 3), varying the gap range across
+# sub-groups for some diversity, each with a distinct seed
+gap_ranges = [[1, 2], [1, 2, 3], [2, 3]]
+for i in range(100):
     seed = 5000 + i
     random.seed(seed)
+    gap_choices = gap_ranges[i % len(gap_ranges)]
     chunk = []
     length = 0
-    target_len = 50
+    target_len = 40
     while length < target_len:
         chunk.append("#")
-        gap = random.choice([1, 2, 3])
+        gap = random.choice(gap_choices)
         chunk.append("_" * (gap - 1))
         length += gap
     patterns.append("".join(chunk))
 
 assert len(patterns) == 500
 
-# guarantee uniqueness - if a random one collides with a grid one (extremely
-# unlikely given the different construction, but check anyway), bump the seed
+# guarantee uniqueness - bump the seed on any collision (extremely unlikely
+# given the different construction, but check anyway)
 seen = set()
 final = []
 next_seed = 6000
@@ -42,7 +47,7 @@ for p in patterns:
         next_seed += 1
         chunk = []
         length = 0
-        while length < 50:
+        while length < 40:
             chunk.append("#")
             gap = random.choice([1, 2, 3])
             chunk.append("_" * (gap - 1))
@@ -58,6 +63,7 @@ with open(OUT, "w") as f:
         f.write(f"{i}\t{p}\n")
 
 densities = [p.count("#") / len(p) for p in final]
-print(f"wrote {OUT}: 500 patterns (450 structured run/gap grid + 50 random-gap 1-3)")
+lengths = [len(p) for p in final]
+print(f"wrote {OUT}: 500 patterns (400 structured run/gap grid, run<=20 gap<=20 + 100 random-gap<=3)")
 print(f"density range: {min(densities):.2f} - {max(densities):.2f}")
-print(f"max single gap across all patterns: {max(p.count('_') // max(1, p.count('#')) for p in final[:450])} (structured only, bounded by design)")
+print(f"pattern length range: {min(lengths)} - {max(lengths)} chars")
