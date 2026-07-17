@@ -34,8 +34,10 @@ echo "==============================="
 echo "overall progress"
 echo "==============================="
 if [ -d "$RESULTS_DIR" ]; then
+    num_genomes=$(wc -l < "${BENCH_DIR}/genomes_50_manifest.txt" 2>/dev/null || echo "?")
+    total_expected=$((num_genomes * 500))
     total_done=$(cat ${RESULTS_DIR}/pattern_sweep_results_job*.csv 2>/dev/null | grep -v "^genome_id" | wc -l)
-    echo "total combinations completed: ${total_done} / 25000"
+    echo "total combinations completed: ${total_done} / ${total_expected} (${num_genomes} genomes x 500 patterns)"
 
     echo ""
     echo "genomes with all 500 patterns done:"

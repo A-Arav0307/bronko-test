@@ -5,10 +5,19 @@ import csv
 import os
 
 REPO_DIR = os.path.expanduser("~/bronko_benchmark/bronko-test")
+BENCH_DIR = os.path.expanduser("~/bronko_benchmark/phastsim-run")
 RESULTS_DIR = os.path.join(REPO_DIR, "sweep_results")
 STATE_FILE = os.path.join(RESULTS_DIR, ".genomes_pushed.txt")
+MANIFEST = os.path.join(BENCH_DIR, "genomes_50_manifest.txt")
 NUM_PATTERNS = 500
 CHECK_INTERVAL = 60  # seconds
+
+
+def total_genome_count():
+    # read from the manifest rather than hardcoding 50 - the duplicate-reference
+    # exclusion can leave 49 (or a different count if the input set ever changes)
+    with open(MANIFEST) as f:
+        return len([line for line in f if line.strip()])
 
 
 def load_pushed():
@@ -49,8 +58,9 @@ def git_push_milestone(newly_completed):
 
 def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
+    num_genomes = total_genome_count()
     pushed = load_pushed()
-    print(f"monitoring genome completion, already-pushed: {len(pushed)}")
+    print(f"monitoring genome completion ({num_genomes} genomes total), already-pushed: {len(pushed)}")
     while True:
         counts = count_patterns_per_genome()
         complete_now = {g for g, c in counts.items() if c >= NUM_PATTERNS}
@@ -61,10 +71,10 @@ def main():
             pushed |= newly_completed
             save_pushed(pushed)
 
-        print(f"[monitor] {len(complete_now)}/50 genomes fully complete, {len(counts)} genomes with any data so far")
+        print(f"[monitor] {len(complete_now)}/{num_genomes} genomes fully complete, {len(counts)} genomes with any data so far")
 
-        if len(complete_now) >= 50:
-            print("[monitor] all 50 genomes complete, exiting monitor")
+        if len(complete_now) >= num_genomes:
+            print(f"[monitor] all {num_genomes} genomes complete, exiting monitor")
             break
 
         time.sleep(CHECK_INTERVAL)

@@ -29,11 +29,12 @@ for r in records:
 
 # Parsnp's auto-picked reference genome appears TWICE in the tree - once as the
 # ".ref" backbone, once as a regular query (since it was also one of the 50 real
-# input genomes). Both leaves evolve from ~zero branch length, so both show up
-# with near-zero diffs here. Detect the pair by matching IDs after stripping a
-# trailing ".ref", and keep only the more-evolved member of each such pair -
-# dropping both would leave only 49 genomes, but keeping both leaves a
-# near-mutation-free duplicate in the set (the actual bug we hit).
+# input genomes). Both leaves evolve from ~zero branch length, so BOTH show up
+# with near-zero diffs here (e.g. 7 and 9 out of 5.88M bp) - neither is a
+# meaningfully-evolved genome, so keeping "the higher of the two" (an earlier,
+# wrong version of this fix) just picks which near-empty duplicate to keep.
+# Exclude both entirely. That leaves 49 genomes, not 50 - there genuinely is no
+# meaningfully-evolved descendant of the reference genome in this simulation.
 by_normalized_id = {}
 for diffs, r in scored:
     norm_id = r.id[:-4] if r.id.endswith(".ref") else r.id
@@ -42,17 +43,14 @@ for diffs, r in scored:
 selected = []
 for norm_id, group in by_normalized_id.items():
     if len(group) > 1:
-        group.sort(key=lambda x: x[0])
-        dropped_diffs, dropped_record = group[0]
-        kept_diffs, kept_record = group[-1]
-        print(f"duplicate pair detected for {norm_id}: dropping {dropped_record.id} ({dropped_diffs} diffs), keeping {kept_record.id} ({kept_diffs} diffs)")
-        selected.append((kept_diffs, kept_record))
+        ids = [r.id for _, r in group]
+        diffs_list = [d for d, _ in group]
+        print(f"duplicate pair detected for {norm_id}: excluding both {ids} ({diffs_list} diffs - both near-zero, neither meaningfully evolved)")
     else:
         selected.append(group[0])
 
 selected.sort(key=lambda x: x[0])
-if len(selected) != 50:
-    print(f"WARNING: expected 50 genomes after de-duplication, got {len(selected)}")
+print(f"{len(selected)} meaningful genomes remain after excluding the duplicate pair")
 
 manifest_lines = []
 for diffs, r in selected:
