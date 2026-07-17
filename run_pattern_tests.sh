@@ -22,13 +22,35 @@ THREADED_BIN=~/bronko_benchmark/bronko-test/bronko_threaded/target/release/bronk
 PATTERN_BIN=~/bronko_benchmark/bronko-test/target/release/bronko
 
 GENOME=$BENCH_DIR/reference_single.fasta
-R1=$BENCH_DIR/single_genome_r1.fq
-R2=$BENCH_DIR/single_genome_r2.fq
-TRUTH=$BENCH_DIR/single_genome_ground_truth.csv
+
+# optional: pass a genome ID (matching genomes_50/<id>.fasta from setup_50_genomes.py)
+# to test that genome instead of the original single_genome_* files
+GENOME_ID=$1
 
 cd $BENCH_DIR
 
-SUMMARY=$BENCH_DIR/pattern_test_summary.csv
+if [ -n "$GENOME_ID" ]; then
+    SRC_FASTA="genomes_50/${GENOME_ID}.fasta"
+    R1="genomes_50/${GENOME_ID}_r1.fq"
+    R2="genomes_50/${GENOME_ID}_r2.fq"
+    TRUTH="genomes_50/${GENOME_ID}_ground_truth.csv"
+
+    if [ ! -f "$SRC_FASTA" ]; then
+        echo "ERROR: ${SRC_FASTA} not found - has setup_50_genomes.py been run?"
+        exit 1
+    fi
+    if [ ! -f "$R1" ] || [ ! -f "$R2" ]; then
+        echo "no reads yet for ${GENOME_ID}, simulating now..."
+        wgsim -e 0.001 -r 0 -R 0 -X 0 -N 1000000 -1 150 -2 150 "$SRC_FASTA" "$R1" "$R2" > /dev/null
+    fi
+    SUMMARY=$BENCH_DIR/pattern_test_summary_${GENOME_ID}.csv
+else
+    R1=$BENCH_DIR/single_genome_r1.fq
+    R2=$BENCH_DIR/single_genome_r2.fq
+    TRUTH=$BENCH_DIR/single_genome_ground_truth.csv
+    SUMMARY=$BENCH_DIR/pattern_test_summary.csv
+fi
+
 echo "label,time_s,mem_gb,precision,recall" > $SUMMARY
 
 run_and_measure() {
