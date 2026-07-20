@@ -2,7 +2,6 @@ import glob
 import csv
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-import matplotlib.cm as cm
 
 SURFACE = "#fcfcfb"
 PRIMARY_INK = "#0b0b0b"
@@ -11,8 +10,6 @@ MUTED_INK = "#898781"
 GRID = "#e1e0d9"
 BASELINE_LINE = "#c3c2b7"
 
-# validated sequential blue ramp from the project's dataviz palette (steps 250-700,
-# staying within the 2:1+ contrast band on the light surface)
 BLUE_RAMP = LinearSegmentedColormap.from_list(
     "blue_seq", ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"]
 )
@@ -23,8 +20,8 @@ def load_results():
     for path in glob.glob("pattern_sweep_results_job*.csv"):
         with open(path) as f:
             reader = csv.DictReader(f)
-            for r in reader:
-                rows.append(r)
+            for row in reader:
+                rows.append(row)
     return rows
 
 
@@ -40,16 +37,16 @@ def aggregate(rows):
         rs = d["rows"]
         n = len(rs)
         pattern = d["pattern"]
-        density = pattern.count("#") / len(pattern)
+        match_count = pattern.count("#")
         mean_time = sum(float(x["time_s"]) for x in rs) / n
         mean_mem = sum(float(x["mem_gb"]) for x in rs) / n
         mean_precision = sum(float(x["precision"]) for x in rs) / n
         mean_recall = sum(float(x["recall"]) for x in rs) / n
         mean_f1 = sum(float(x["f1"]) for x in rs) / n
-        means.append(dict(pattern_idx=idx, pattern=pattern, density=density, n_genomes=n,
+        means.append(dict(pattern_idx=idx, pattern=pattern, match_count=match_count, n_genomes=n,
                            time_s=mean_time, mem_gb=mean_mem, precision=mean_precision,
                            recall=mean_recall, f1=mean_f1))
-    means.sort(key=lambda x: x["density"])
+    means.sort(key=lambda x: x["match_count"])
     return means
 
 
@@ -79,67 +76,56 @@ def style_axes(ax, xlabel, ylabel, title):
     ax.tick_params(axis="both", colors=MUTED_INK, labelsize=9)
 
 
-def plot_runtime_vs_memory(means):
+def scatter_with_colorbar(xs, ys, cs, xlabel, ylabel, title, fname, cbar_label):
     fig, ax = plt.subplots(figsize=(10, 7))
     fig.patch.set_facecolor(SURFACE)
     ax.set_facecolor(SURFACE)
 
-    xs = [m["time_s"] for m in means]
-    ys = [m["mem_gb"] for m in means]
-    cs = [m["density"] for m in means]
-
     sc = ax.scatter(xs, ys, c=cs, cmap=BLUE_RAMP, s=28, alpha=0.85, edgecolors=SURFACE, linewidths=0.4, zorder=3)
     cbar = fig.colorbar(sc, ax=ax)
-    cbar.set_label("Bucket keep density", fontsize=10, color=SECONDARY_INK)
+    cbar.set_label(cbar_label, fontsize=10, color=SECONDARY_INK)
     cbar.ax.tick_params(colors=MUTED_INK, labelsize=8)
 
-    style_axes(ax, "Mean runtime (s)", "Mean peak memory (GB)",
-               "500-pattern sweep: mean runtime vs. mean memory (across 50 genomes)")
+    style_axes(ax, xlabel, ylabel, title)
     plt.tight_layout()
-    plt.savefig("sweep_runtime_vs_memory.png", dpi=150, facecolor=SURFACE)
-    print("saved sweep_runtime_vs_memory.png")
+    plt.savefig(fname, dpi=150, facecolor=SURFACE)
+    print(f"saved {fname}")
+
+
+def plot_runtime_vs_memory(means):
+    scatter_with_colorbar(
+        [m["time_s"] for m in means], [m["mem_gb"] for m in means], [m["match_count"] for m in means],
+        "Mean runtime (s)", "Mean peak memory (GB)",
+        "500-pattern sweep: mean runtime vs. mean memory (across 49 genomes)",
+        "sweep_runtime_vs_memory.png", "Number of match positions (#)"
+    )
 
 
 def plot_f1_vs_runtime_vs_memory(means):
-    fig, ax = plt.subplots(figsize=(10, 7))
-    fig.patch.set_facecolor(SURFACE)
-    ax.set_facecolor(SURFACE)
-
-    xs = [m["time_s"] for m in means]
-    ys = [m["mem_gb"] for m in means]
-    cs = [m["f1"] for m in means]
-
-    sc = ax.scatter(xs, ys, c=cs, cmap=BLUE_RAMP, s=28, alpha=0.85, edgecolors=SURFACE, linewidths=0.4, zorder=3)
-    cbar = fig.colorbar(sc, ax=ax)
-    cbar.set_label("Mean F1", fontsize=10, color=SECONDARY_INK)
-    cbar.ax.tick_params(colors=MUTED_INK, labelsize=8)
-
-    style_axes(ax, "Mean runtime (s)", "Mean peak memory (GB)",
-               "500-pattern sweep: F1 vs. runtime vs. memory (color = mean F1)")
-    plt.tight_layout()
-    plt.savefig("sweep_f1_vs_runtime_vs_memory.png", dpi=150, facecolor=SURFACE)
-    print("saved sweep_f1_vs_runtime_vs_memory.png")
+    scatter_with_colorbar(
+        [m["time_s"] for m in means], [m["mem_gb"] for m in means], [m["f1"] for m in means],
+        "Mean runtime (s)", "Mean peak memory (GB)",
+        "500-pattern sweep: F1 vs. runtime vs. memory (color = mean F1)",
+        "sweep_f1_vs_runtime_vs_memory.png", "Mean F1"
+    )
 
 
 def plot_recall_vs_precision(means):
-    fig, ax = plt.subplots(figsize=(10, 7))
-    fig.patch.set_facecolor(SURFACE)
-    ax.set_facecolor(SURFACE)
+    scatter_with_colorbar(
+        [m["precision"] for m in means], [m["recall"] for m in means], [m["match_count"] for m in means],
+        "Mean precision", "Mean recall",
+        "500-pattern sweep: mean recall vs. mean precision (across 49 genomes)",
+        "sweep_recall_vs_precision.png", "Number of match positions (#)"
+    )
 
-    xs = [m["precision"] for m in means]
-    ys = [m["recall"] for m in means]
-    cs = [m["density"] for m in means]
 
-    sc = ax.scatter(xs, ys, c=cs, cmap=BLUE_RAMP, s=28, alpha=0.85, edgecolors=SURFACE, linewidths=0.4, zorder=3)
-    cbar = fig.colorbar(sc, ax=ax)
-    cbar.set_label("Bucket keep density", fontsize=10, color=SECONDARY_INK)
-    cbar.ax.tick_params(colors=MUTED_INK, labelsize=8)
-
-    style_axes(ax, "Mean precision", "Mean recall",
-               "500-pattern sweep: mean recall vs. mean precision (across 50 genomes)")
-    plt.tight_layout()
-    plt.savefig("sweep_recall_vs_precision.png", dpi=150, facecolor=SURFACE)
-    print("saved sweep_recall_vs_precision.png")
+def plot_recall_vs_runtime(means):
+    scatter_with_colorbar(
+        [m["time_s"] for m in means], [m["recall"] for m in means], [m["match_count"] for m in means],
+        "Mean runtime (s)", "Mean recall",
+        "500-pattern sweep: mean recall vs. mean runtime (across 49 genomes)",
+        "sweep_recall_vs_runtime.png", "Number of match positions (#)"
+    )
 
 
 def main():
@@ -151,11 +137,12 @@ def main():
     write_csvs(rows, means)
 
     completeness = [m["n_genomes"] for m in means]
-    print(f"patterns with data so far: {len(means)}/500, genomes completed per pattern: min={min(completeness)} max={max(completeness)} (of 50)")
+    print(f"patterns with data so far: {len(means)}/500, genomes completed per pattern: min={min(completeness)} max={max(completeness)} (of 49)")
 
     plot_runtime_vs_memory(means)
     plot_f1_vs_runtime_vs_memory(means)
     plot_recall_vs_precision(means)
+    plot_recall_vs_runtime(means)
 
 
 if __name__ == "__main__":

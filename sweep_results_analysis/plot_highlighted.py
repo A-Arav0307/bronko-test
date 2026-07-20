@@ -12,7 +12,17 @@ HIGHLIGHT = "#e34948"
 
 BLUE_RAMP = LinearSegmentedColormap.from_list("blue_seq", ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"])
 
-HIGHLIGHT_IDX = {"496", "486", "476", "466", "186"}
+# idx -> manual offset (dx, dy) in points, tuned to keep labels apart
+HIGHLIGHT_OFFSETS = {
+    "476": (-90, -160),
+    "466": (110, -170),
+    "496": (-20, 170),
+    "486": (170, 150),
+    "186": (240, 20),
+}
+
+def truncate(p, n=20):
+    return p if len(p) <= n else p[:n] + "…"
 
 rows = list(csv.DictReader(open("pattern_sweep_means.csv")))
 for r in rows:
@@ -21,12 +31,12 @@ for r in rows:
     r["recall"] = float(r["recall"])
     r["density"] = r["pattern"].count("#") / len(r["pattern"])
 
-fig, ax = plt.subplots(figsize=(11, 7.5))
+fig, ax = plt.subplots(figsize=(13, 8.5))
 fig.patch.set_facecolor(SURFACE)
 ax.set_facecolor(SURFACE)
 
-others = [r for r in rows if r["pattern_idx"] not in HIGHLIGHT_IDX]
-highlighted = [r for r in rows if r["pattern_idx"] in HIGHLIGHT_IDX]
+others = [r for r in rows if r["pattern_idx"] not in HIGHLIGHT_OFFSETS]
+highlighted = [r for r in rows if r["pattern_idx"] in HIGHLIGHT_OFFSETS]
 
 sc = ax.scatter([r["time_s"] for r in others], [r["mem_gb"] for r in others],
                 c=[r["density"] for r in others], cmap=BLUE_RAMP, s=22, alpha=0.55,
@@ -39,12 +49,13 @@ ax.scatter([r["time_s"] for r in highlighted], [r["mem_gb"] for r in highlighted
            color=HIGHLIGHT, s=140, edgecolors=SURFACE, linewidths=1.5, zorder=4,
            label="Top 5 by raw recall")
 
-offsets = [(12, 8), (12, -8), (12, 8), (-14, -18), (12, 8)]
-for (dx, dy), r in zip(offsets, sorted(highlighted, key=lambda r: r["time_s"])):
-    ax.annotate(f"idx {r['pattern_idx']}, recall={r['recall']:.3f}",
-                xy=(r["time_s"], r["mem_gb"]), xytext=(dx, dy), textcoords="offset points",
-                fontsize=9, color=PRIMARY_INK, ha="left" if dx > 0 else "right", va="center",
-                bbox=dict(boxstyle="round,pad=0.25", facecolor=SURFACE, edgecolor=HIGHLIGHT, linewidth=0.8),
+for r in highlighted:
+    dx, dy = HIGHLIGHT_OFFSETS[r["pattern_idx"]]
+    label = f"{truncate(r['pattern'])}\nrecall={r['recall']:.3f}"
+    ax.annotate(label, xy=(r["time_s"], r["mem_gb"]), xytext=(dx, dy), textcoords="offset points",
+                fontsize=9, family="monospace", color=PRIMARY_INK,
+                ha="left" if dx > 0 else "right", va="center",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor=SURFACE, edgecolor=HIGHLIGHT, linewidth=0.8),
                 arrowprops=dict(arrowstyle="-", color=HIGHLIGHT, linewidth=0.8, shrinkA=0, shrinkB=8))
 
 ax.set_xlabel("Mean runtime (s)", fontsize=11, color=SECONDARY_INK)
@@ -62,7 +73,7 @@ legend = ax.legend(loc="upper left", frameon=True, fontsize=10, labelcolor=PRIMA
 legend.get_frame().set_facecolor(SURFACE)
 legend.get_frame().set_edgecolor(BASELINE_LINE)
 
-ax.margins(x=0.15, y=0.15)
+ax.margins(x=0.25, y=0.35)
 plt.tight_layout()
 plt.savefig("sweep_runtime_vs_memory_highlighted.png", dpi=150, facecolor=SURFACE)
 print("saved sweep_runtime_vs_memory_highlighted.png")
