@@ -21,7 +21,6 @@ COMPARE_SCRIPT=$BENCH_DIR/compare_bronko_vcf.py
 OUT_DIR=/tmp/pattern_sweep_job_${JOB_ID}
 RESULTS_DIR=$REPO_DIR/sweep_results
 RESULTS_CSV=$RESULTS_DIR/pattern_sweep_results_job${JOB_ID}.csv
-PUSH_EVERY=10
 
 mkdir -p "$RESULTS_DIR"
 cd $BENCH_DIR
@@ -29,20 +28,6 @@ cd $BENCH_DIR
 if [ ! -f "$RESULTS_CSV" ]; then
     echo "genome_id,pattern_idx,pattern,time_s,mem_gb,precision,recall,f1" > $RESULTS_CSV
 fi
-
-git_checkpoint() {
-    (
-        cd "$REPO_DIR" || exit 0
-        git add "sweep_results/pattern_sweep_results_job${JOB_ID}.csv" 2>/dev/null
-        git commit -m "job ${JOB_ID}: checkpoint at $(wc -l < "$RESULTS_CSV") lines" >/dev/null 2>&1
-        git pull --rebase origin 500-pattern-sweep >/dev/null 2>&1
-        if git push origin 500-pattern-sweep >/dev/null 2>&1; then
-            echo "[job ${JOB_ID}] pushed checkpoint"
-        else
-            echo "[job ${JOB_ID}] WARNING: checkpoint push failed, will retry next checkpoint" >&2
-        fi
-    )
-}
 
 mapfile -t GENOME_IDS < "$MANIFEST"
 mapfile -t PATTERN_LINES < "$PATTERNS"
@@ -60,7 +45,6 @@ if [ -f "$RESULTS_CSV" ]; then
         DONE["${g}_${p}"]=1
     done < <(tail -n +2 "$RESULTS_CSV")
 fi
-completed_this_run=0
 
 for ((k=JOB_ID; k<TOTAL; k+=NUM_JOBS)); do
     genome_idx=$((k / NUM_PATTERNS))
@@ -83,7 +67,8 @@ for ((k=JOB_ID; k<TOTAL; k+=NUM_JOBS)); do
 
     TIME_LOG=$(mktemp)
     if ! /usr/bin/time -v $BIN call -g $REF -1 "$R1" -2 "$R2" -o "$OUT_DIR" -t 10 --bucket-pattern "$pattern" 2> "$TIME_LOG"; then
-        echo "FAILED: genome=${genome_id} pattern_idx=${pattern_idx}" >&2
+        echo "FAILED: genome=${genome_id} pattern_idx=${pattern_idx} -- error output:" >&2
+        cat "$TIME_LOG" >&2
         rm -f "$TIME_LOG"
         continue
     fi
@@ -105,13 +90,7 @@ for ((k=JOB_ID; k<TOTAL; k+=NUM_JOBS)); do
 
     echo "${genome_id},${pattern_idx},${pattern},${t},${m},${precision},${recall},${f1}" >> "$RESULTS_CSV"
     echo "[job ${JOB_ID}] genome $((genome_idx + 1))/${NUM_GENOMES} (${genome_id}) pattern $((pattern_idx + 1))/${NUM_PATTERNS} [${pattern}]: time=${t}s mem=${m}gb precision=${precision} recall=${recall} f1=${f1}"
-
-    completed_this_run=$((completed_this_run + 1))
-    if (( completed_this_run % PUSH_EVERY == 0 )); then
-        git_checkpoint
-    fi
 done
 
-git_checkpoint
 rm -rf "$OUT_DIR"
 echo "job ${JOB_ID} complete"
