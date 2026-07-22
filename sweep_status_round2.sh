@@ -45,17 +45,18 @@ echo "overall progress"
 echo "==============================="
 if [ -d "$RESULTS_DIR" ]; then
     num_genomes=$(wc -l < "${BENCH_DIR}/genomes_50_manifest.txt" 2>/dev/null || echo "?")
-    total_expected=$((num_genomes * 500))
+    num_patterns=$(wc -l < "${BENCH_DIR}/patterns_500.txt" 2>/dev/null || echo "500")
+    total_expected=$((num_genomes * num_patterns))
     total_done=$(cat ${RESULTS_DIR}/pattern_sweep_results_job*.csv 2>/dev/null | grep -v "^genome_id" | wc -l)
-    echo "total combinations completed: ${total_done} / ${total_expected} (${num_genomes} genomes x 500 patterns)"
+    echo "total combinations completed: ${total_done} / ${total_expected} (${num_genomes} genomes x ${num_patterns} patterns)"
 
     echo ""
-    echo "genomes with all 500 patterns done:"
-    cat ${RESULTS_DIR}/pattern_sweep_results_job*.csv 2>/dev/null | grep -v "^genome_id" | cut -d, -f1 | sort | uniq -c | awk '$1 >= 500 {print "  " $2 " (" $1 "/500)"}'
+    echo "genomes with all ${num_patterns} patterns done:"
+    cat ${RESULTS_DIR}/pattern_sweep_results_job*.csv 2>/dev/null | grep -v "^genome_id" | cut -d, -f1 | sort | uniq -c | awk -v n="$num_patterns" '$1 >= n {print "  " $2 " (" $1 "/" n ")"}'
 
     echo ""
     echo "genomes still in progress:"
-    cat ${RESULTS_DIR}/pattern_sweep_results_job*.csv 2>/dev/null | grep -v "^genome_id" | cut -d, -f1 | sort | uniq -c | awk '$1 < 500 {print "  " $2 " (" $1 "/500)"}'
+    cat ${RESULTS_DIR}/pattern_sweep_results_job*.csv 2>/dev/null | grep -v "^genome_id" | cut -d, -f1 | sort | uniq -c | awk -v n="$num_patterns" '$1 < n {print "  " $2 " (" $1 "/" n ")"}'
 else
     echo "no results directory found yet at ${RESULTS_DIR}"
 fi
