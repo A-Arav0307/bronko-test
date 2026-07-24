@@ -1,65 +1,50 @@
-import random
+import itertools
 
 OUT = "patterns_500.txt"
-K = 21  # bronko's default kmer size - patterns are capped to this length since anything
-        # beyond position k-1 is never consulted (keep_mask[j % len] only ever sees j in 0..k)
+K = 21
+HALF_BUDGET = 10  # each side of the pattern (half + mirrored half) fits within this, plus 1+ middle chars = K
+
+ska_pattern = "__________#__________"
+TARGET_TOTAL = 500
 
 patterns = []
-
-# symmetric run/gap grid: half = "#"*run + "_"*gap, pattern = half + "#" + reverse(half).
-# run 1..15, gap 1..30 -> 450 combinations, capped to k=21 chars. Capping collapses many
-# of the longer run/gap combos into duplicates (since anything past position 20 never
-# mattered anyway), so dedupe and report however many distinct patterns remain.
 seen = set()
-symmetric = []
-for run in range(1, 16):
-    for gap in range(1, 31):
-        half = ("#" * run) + ("_" * gap)
-        full = half + "#" + half[::-1]
-        capped = full[:K]
-        if capped not in seen:
-            seen.add(capped)
-            symmetric.append(capped)
 
-print(f"symmetric run/gap grid: 450 combinations generated, {len(symmetric)} distinct after capping to k={K}")
-patterns.extend(symmetric)
+for run in range(1, HALF_BUDGET):
+    for gap in range(1, HALF_BUDGET - run + 1):
+        base = ("#" * run) + ("_" * gap)
+        L = len(base)
+        reps = HALF_BUDGET // L
+        half = base * reps
+        middle_len = K - 2 * len(half)
+        right = half[::-1]
 
-# 100 random-gap patterns: consecutive kept positions spaced a random amount
-# apart, still small/close-together (max gap 3), varying the gap range across
-# sub-groups for some diversity, each with a distinct seed. Kept unchanged from
-# the original generator so this block is reproducible run to run.
-gap_ranges = [[1, 2], [1, 2, 3], [2, 3]]
-random_patterns = []
-for i in range(100):
-    seed = 5000 + i
-    random.seed(seed)
-    gap_choices = gap_ranges[i % len(gap_ranges)]
-    chunk = []
-    length = 0
-    target_len = 40
-    while length < target_len:
-        chunk.append("#")
-        gap = random.choice(gap_choices)
-        chunk.append("_" * (gap - 1))
-        length += gap
-    random_patterns.append("".join(chunk))
+        tier = []
+        for bits in itertools.product("#_", repeat=middle_len):
+            middle = "".join(bits)
+            pattern = half + middle + right
+            if pattern not in seen:
+                seen.add(pattern)
+                tier.append(pattern)
 
-# only the last 50 of the original 100 randomized patterns are kept (first 50 replaced
-# by the symmetric grid above, per instruction to preserve "the last 50 as is")
-preserved_randomized = random_patterns[50:100]
-patterns.extend(preserved_randomized)
+        remaining = (TARGET_TOTAL - 1) - len(patterns)  # -1 reserves the last slot for ska_pattern
+        if remaining <= 0:
+            break
+        patterns.extend(tier[:remaining])
+        print(f"base={base!r} (run={run},gap={gap},L={L}): half={half!r} ({len(half)} chars), "
+              f"middle_len={middle_len} ({2**middle_len} possible), took {min(len(tier), remaining)}")
+    if len(patterns) >= TARGET_TOTAL - 1:
+        break
 
-# manually added: single '#' centered in a k=21 window (named after the split-kmer
-# concept in the SKA tool), added after the original 500-pattern sweep already ran
-ska_pattern = "__________#__________"
 patterns.append(ska_pattern)
 
-# guarantee uniqueness across the whole combined set
-assert len(patterns) == len(set(patterns)), "collision found in combined pattern set"
+assert len(patterns) == TARGET_TOTAL, f"expected {TARGET_TOTAL}, got {len(patterns)}"
+assert len(set(patterns)) == TARGET_TOTAL, "collision found"
+assert all(len(p) == K for p in patterns), "not every pattern is exactly k=21 chars"
 
 with open(OUT, "w") as f:
     for i, p in enumerate(patterns):
         f.write(f"{i}\t{p}\n")
 
-print(f"wrote {OUT}: {len(symmetric)} symmetric (idx 0-{len(symmetric)-1}) + "
-      f"{len(preserved_randomized)} preserved randomized + 1 ska_pattern = {len(patterns)} total patterns")
+print(f"\nwrote {OUT}: {TARGET_TOTAL} patterns, all exactly k={K} chars, all symmetric "
+      f"(half + free middle + mirrored half), ska_pattern kept as idx {TARGET_TOTAL - 1}")
