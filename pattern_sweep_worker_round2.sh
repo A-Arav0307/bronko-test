@@ -66,7 +66,7 @@ for ((k=JOB_ID; k<TOTAL; k+=NUM_JOBS)); do
     mkdir -p "$OUT_DIR"
 
     TIME_LOG=$(mktemp)
-    if ! /usr/bin/time -v $BIN call -g $REF -1 "$R1" -2 "$R2" -o "$OUT_DIR" -t 10 --bucket-pattern "$pattern" 2> "$TIME_LOG"; then
+    if ! /usr/bin/time -v $BIN call -g $REF -1 "$R1" -2 "$R2" -o "$OUT_DIR" -t 10 --use-full-kmer --bucket-pattern "$pattern" 2> "$TIME_LOG"; then
         echo "FAILED: genome=${genome_id} pattern_idx=${pattern_idx} -- error output:" >&2
         cat "$TIME_LOG" >&2
         rm -f "$TIME_LOG"
