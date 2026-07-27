@@ -4,7 +4,8 @@ import sys
 from upsetplot import UpSet, from_contents
 import matplotlib.pyplot as plt
 
-PARSNP_VCF = "../phastsim-run-round2/parsnp-out/parsnp_variants.vcf"
+import os
+PARSNP_VCF = os.path.expanduser("~/bronko_benchmark/phastsim-run-round2/parsnp-out/parsnp_variants.vcf")
 RESULTS_DIR = "."
 
 LABELS = ["default", "ska_pattern", "idx336", "idx408", "idx216", "idx28",
