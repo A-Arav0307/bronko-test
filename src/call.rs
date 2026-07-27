@@ -312,7 +312,7 @@ pub fn call(args: CallArgs) {
     //build the indexes
     if let Some(genomes) = &args.genomes {
         info!("Creating bronko index from provided reference genomes");
-        let (index, meta): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride, &args.bucket_pattern).unwrap_or_else(|e| {
+        let (index, meta): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride, &args.bucket_pattern, &args.specify_pattern).unwrap_or_else(|e| {
             error!("{} | Reference failed to build", e);
             std::process::exit(1)
         });
@@ -1530,7 +1530,14 @@ pub fn map_kmers(
     let results: DashMap<u16, (usize, usize, usize)> = DashMap::new();
     
     let chunk_size = if ((kmers.len() / threads) as usize) < 10000 { max(kmers.len() / threads, 100) as usize } else { 10000 };
-    let keep_mask = bucket_keep_mask(&args.bucket_pattern, args.bucket_stride);
+    let keep_mask = if let Some(sp) = &args.specify_pattern {
+        parse_specify_pattern(sp, k).unwrap_or_else(|e| {
+            error!("{}", e);
+            std::process::exit(1);
+        })
+    } else {
+        bucket_keep_mask(&args.bucket_pattern, args.bucket_stride)
+    };
 
     kmers.par_chunks(chunk_size).for_each(|chunk| {
 

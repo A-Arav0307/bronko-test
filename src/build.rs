@@ -193,7 +193,7 @@ pub fn build(args: BuildArgs) {
 
 
     //build the indexes
-    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride, &args.bucket_pattern).unwrap_or_else(|e| {
+    let (ref_index, viral_metadata): (FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata) = build_indexes(args.kmer, &genomes, args.bucket_stride, &args.bucket_pattern, &args.specify_pattern).unwrap_or_else(|e| {
         error!("{} | Reference failed to build", e);
         std::process::exit(1)
     });
@@ -239,9 +239,17 @@ pub fn build_indexes(
     genomes: &[String],
     bucket_stride: usize,
     bucket_pattern: &Option<String>,
+    specify_pattern: &Option<String>,
 ) -> Result<(FxHashMap<u64, Vec<BucketInfo>>, ViralMetadata), Error> {
     info!("Building indexes from fasta files");
-    let keep_mask = bucket_keep_mask(bucket_pattern, bucket_stride);
+    let keep_mask = if let Some(sp) = specify_pattern {
+        parse_specify_pattern(sp, k).unwrap_or_else(|e| {
+            error!("{}", e);
+            std::process::exit(1);
+        })
+    } else {
+        bucket_keep_mask(bucket_pattern, bucket_stride)
+    };
 
     // use map - reduce framework from rayon to process and integrate all files into single index
     let (global_index, all_files) = genomes

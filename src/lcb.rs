@@ -1,3 +1,5 @@
+use crate::consts::MAX_KMER_SIZE;
+
 pub fn assign_buckets(kmer: u64, k: usize) -> Vec<u64> {
     let mut buckets = [0u64; 32];
     let mut num_a = [0u64; 32];
@@ -56,6 +58,30 @@ pub fn bucket_keep_mask(pattern: &Option<String>, stride: usize) -> Vec<bool> {
         mask[0] = true;
         mask
     }
+}
+
+// explicit 1/0 keep-mask that must match k exactly - no cyclic tiling, unlike bucket_keep_mask.
+// '1' = keep, '0' = skip. e.g. k=15, pattern="110000000000001" -> keeps only the first two and last position.
+pub fn parse_specify_pattern(pattern: &str, k: usize) -> Result<Vec<bool>, String> {
+    if pattern.len() > MAX_KMER_SIZE {
+        return Err(format!(
+            "--specify-pattern is too long ({} chars) - must be {} characters or fewer",
+            pattern.len(), MAX_KMER_SIZE
+        ));
+    }
+    if pattern.len() != k {
+        return Err(format!(
+            "--specify-pattern length ({}) must exactly match --kmer-size ({})",
+            pattern.len(), k
+        ));
+    }
+    if !pattern.chars().all(|c| c == '0' || c == '1') {
+        return Err("--specify-pattern must contain only '0' and '1'".to_string());
+    }
+    if !pattern.contains('1') {
+        return Err("--specify-pattern must keep at least one position".to_string());
+    }
+    Ok(pattern.chars().map(|c| c == '1').collect())
 }
 
 pub fn nt_to_bits(nt: u8) -> u8 {
