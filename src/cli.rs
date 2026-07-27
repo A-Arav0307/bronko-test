@@ -48,7 +48,7 @@ pub struct BuildArgs {
     #[clap(long="bucket-pattern", help_heading="KMER", help="Explicit keep/skip pattern over bucket positions, e.g. \"##_\" = keep,keep,skip repeating. Overrides --bucket-stride if set.")]
     pub bucket_pattern: Option<String>,
 
-    #[clap(long="specify-pattern", help_heading="KMER", help="Explicit 1/0 keep-mask matching kmer size exactly, e.g. k=5, pattern=\"11000\" -> keep,keep,skip,skip,skip. Overrides --bucket-pattern and --bucket-stride if set.")]
+    #[clap(long="specify-pattern", help_heading="KMER", help="Explicit 1/0 keep-mask matching kmer size exactly, e.g. k=15, pattern=\"110000000000001\" -> keeps only the first two and last position. Overrides --bucket-pattern and --bucket-stride if set.")]
     pub specify_pattern: Option<String>,
 
     //OUTPUT
@@ -116,7 +116,7 @@ pub struct CallArgs {
     #[clap(long="bucket-pattern", help_heading="ALGORITHM", help="Explicit keep/skip pattern over bucket positions, e.g. \"##_\" = keep,keep,skip repeating. Must match the pattern used at index build time. Overrides --bucket-stride if set.")]
     pub bucket_pattern: Option<String>,
 
-    #[clap(long="specify-pattern", help_heading="ALGORITHM", help="Explicit 1/0 keep-mask matching kmer size exactly, e.g. k=5, pattern=\"11000\" -> keep,keep,skip,skip,skip. Overrides --bucket-pattern and --bucket-stride if set.")]
+    #[clap(long="specify-pattern", help_heading="ALGORITHM", help="Explicit 1/0 keep-mask matching kmer size exactly, e.g. k=15, pattern=\"110000000000001\" -> keeps only the first two and last position. Overrides --bucket-pattern and --bucket-stride if set.")]
     pub specify_pattern: Option<String>,
 
     //VARIANT CALLING PARAMETERS
