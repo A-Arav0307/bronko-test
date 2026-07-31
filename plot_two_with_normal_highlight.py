@@ -58,6 +58,11 @@ def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, f
     fig.patch.set_facecolor(SURFACE)
     ax.set_facecolor(SURFACE)
 
+    if vmin is None:
+        vmin = min(cs)
+    if vmax is None:
+        vmax = max(cs)
+
     sc = ax.scatter(xs, ys, c=cs, cmap=RED_RAMP, s=28, alpha=0.85, edgecolors=SURFACE, linewidths=0.4, zorder=3,
                      vmin=vmin, vmax=vmax)
     cbar = fig.colorbar(sc, ax=ax)
@@ -107,7 +112,7 @@ def main():
         "Mean runtime (s)", "Mean peak memory (GB)",
         "500-pattern sweep: F1 vs. runtime vs. memory (vs. default bronko)",
         f"sweep_f1_vs_runtime_vs_memory_{ts}.png", "Mean F1",
-        vmin=0, vmax=1, log_x=True, log_y=True, normal_c=normal["f1"]
+        log_x=True, log_y=True, normal_c=normal["f1"]
     )
 
 
