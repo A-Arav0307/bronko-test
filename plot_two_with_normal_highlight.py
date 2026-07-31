@@ -1,6 +1,6 @@
 import csv
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 
 SURFACE = "#fcfcfb"
 PRIMARY_INK = "#0b0b0b"
@@ -52,7 +52,7 @@ def style_axes(ax, xlabel, ylabel, title):
     ax.tick_params(axis="both", colors=MUTED_INK, labelsize=9)
 
 
-def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, fname, cbar_label, vmin=None, vmax=None, log_x=False, log_y=False):
+def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, fname, cbar_label, vmin=None, vmax=None, log_x=False, log_y=False, normal_c=None):
     fig, ax = plt.subplots(figsize=(10, 7))
     fig.patch.set_facecolor(SURFACE)
     ax.set_facecolor(SURFACE)
@@ -63,8 +63,14 @@ def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, f
     cbar.set_label(cbar_label, fontsize=10, color=SECONDARY_INK)
     cbar.ax.tick_params(colors=MUTED_INK, labelsize=8)
 
-    ax.scatter([normal_x], [normal_y], color=ORANGE, s=240, marker="o",
-               edgecolors=PRIMARY_INK, linewidths=1.5, zorder=5, label="normal (bucket-stride=1, no skip)")
+    if normal_c is not None:
+        norm = Normalize(vmin=vmin, vmax=vmax)
+        normal_face = RED_RAMP(norm(normal_c))
+    else:
+        normal_face = ORANGE
+
+    ax.scatter([normal_x], [normal_y], color=normal_face, s=240, marker="o",
+               edgecolors=ORANGE, linewidths=2.5, zorder=5, label="normal (bucket-stride=1, no skip)")
     ax.annotate("normal", xy=(normal_x, normal_y), xytext=(15, 15), textcoords="offset points",
                 fontsize=11, fontweight="bold", color=ORANGE,
                 arrowprops=dict(arrowstyle="-", color=ORANGE, linewidth=1.2))
@@ -102,7 +108,7 @@ def main():
         "Mean runtime (s)", "Mean peak memory (GB)",
         "500-pattern sweep: F1 vs. runtime vs. memory (vs. normal bronko)",
         "sweep_f1_vs_runtime_vs_memory_v2.png", "Mean F1",
-        vmin=0, vmax=1, log_x=True, log_y=True
+        vmin=0, vmax=1, log_x=True, log_y=True, normal_c=normal["f1"]
     )
 
 
