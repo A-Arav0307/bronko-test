@@ -71,8 +71,8 @@ def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, f
         normal_face = ORANGE
 
     ax.scatter([normal_x], [normal_y], color=normal_face, s=240, marker="o",
-               edgecolors=ORANGE, linewidths=2.5, zorder=5, label="normal (bucket-stride=1, no skip)")
-    ax.annotate("normal", xy=(normal_x, normal_y), xytext=(15, 15), textcoords="offset points",
+               edgecolors=ORANGE, linewidths=2.5, zorder=5)
+    ax.annotate("default", xy=(normal_x, normal_y), xytext=(15, 15), textcoords="offset points",
                 fontsize=11, fontweight="bold", color=ORANGE,
                 arrowprops=dict(arrowstyle="-", color=ORANGE, linewidth=1.2))
 
@@ -81,9 +81,6 @@ def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, f
         ax.set_xscale("log")
     if log_y:
         ax.set_yscale("log")
-    legend = ax.legend(loc="best", frameon=True, fontsize=9, labelcolor=PRIMARY_INK)
-    legend.get_frame().set_facecolor(SURFACE)
-    legend.get_frame().set_edgecolor(BASELINE_LINE)
 
     plt.tight_layout()
     plt.savefig(fname, dpi=150, facecolor=SURFACE)
@@ -100,7 +97,7 @@ def main():
         [m["precision"] for m in means], [m["recall"] for m in means], [m["match_count"] for m in means],
         normal["precision"], normal["recall"],
         "Mean precision", "Mean recall",
-        "500-pattern sweep: recall vs. precision (vs. normal bronko)",
+        "500-pattern sweep: recall vs. precision (vs. default bronko)",
         f"sweep_recall_vs_precision_{ts}.png", "Number of match positions (#)"
     )
 
@@ -108,7 +105,7 @@ def main():
         [m["time_s"] for m in means], [m["mem_gb"] for m in means], [m["f1"] for m in means],
         normal["time_s"], normal["mem_gb"],
         "Mean runtime (s)", "Mean peak memory (GB)",
-        "500-pattern sweep: F1 vs. runtime vs. memory (vs. normal bronko)",
+        "500-pattern sweep: F1 vs. runtime vs. memory (vs. default bronko)",
         f"sweep_f1_vs_runtime_vs_memory_{ts}.png", "Mean F1",
         vmin=0, vmax=1, log_x=True, log_y=True, normal_c=normal["f1"]
     )
