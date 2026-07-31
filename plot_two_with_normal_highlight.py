@@ -101,7 +101,7 @@ def main():
         normal["time_s"], normal["mem_gb"],
         "Mean runtime (s)", "Mean peak memory (GB)",
         "500-pattern sweep: F1 vs. runtime vs. memory (vs. normal bronko)",
-        "sweep_f1_vs_runtime_vs_memory_red.png", "Mean F1",
+        "sweep_f1_vs_runtime_vs_memory_v2.png", "Mean F1",
         vmin=0, vmax=1, log_x=True, log_y=True
     )
 
