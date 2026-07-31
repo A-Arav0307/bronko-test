@@ -1,8 +1,8 @@
 import csv
 import glob
 
-SKA_TSV = glob.glob("/tmp/pileup_ska/*.tsv")[0]
-DEFAULT_TSV = glob.glob("/tmp/pileup_default/*.tsv")[0]
+SKA_TSV = glob.glob("/tmp/pileup_ska/*_r1.tsv")[0]
+DEFAULT_TSV = glob.glob("/tmp/pileup_default/*_r1.tsv")[0]
 EXAMPLES_CSV = "real_genome_results/ska_only_examples.csv"
 TARGET_GENOME = "GCF_001644745.1_ASM164474v1_genomic.fna"
 
