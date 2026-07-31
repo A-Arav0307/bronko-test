@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 
@@ -93,13 +94,14 @@ def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, f
 def main():
     means = load_means()
     normal = load_normal_mean()
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     scatter_with_normal(
         [m["precision"] for m in means], [m["recall"] for m in means], [m["match_count"] for m in means],
         normal["precision"], normal["recall"],
         "Mean precision", "Mean recall",
         "500-pattern sweep: recall vs. precision (vs. normal bronko)",
-        "sweep_recall_vs_precision_red.png", "Number of match positions (#)"
+        f"sweep_recall_vs_precision_{ts}.png", "Number of match positions (#)"
     )
 
     scatter_with_normal(
@@ -107,7 +109,7 @@ def main():
         normal["time_s"], normal["mem_gb"],
         "Mean runtime (s)", "Mean peak memory (GB)",
         "500-pattern sweep: F1 vs. runtime vs. memory (vs. normal bronko)",
-        "sweep_f1_vs_runtime_vs_memory_v2.png", "Mean F1",
+        f"sweep_f1_vs_runtime_vs_memory_{ts}.png", "Mean F1",
         vmin=0, vmax=1, log_x=True, log_y=True, normal_c=normal["f1"]
     )
 
