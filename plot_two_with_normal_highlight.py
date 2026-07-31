@@ -52,12 +52,13 @@ def style_axes(ax, xlabel, ylabel, title):
     ax.tick_params(axis="both", colors=MUTED_INK, labelsize=9)
 
 
-def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, fname, cbar_label):
+def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, fname, cbar_label, vmin=None, vmax=None):
     fig, ax = plt.subplots(figsize=(10, 7))
     fig.patch.set_facecolor(SURFACE)
     ax.set_facecolor(SURFACE)
 
-    sc = ax.scatter(xs, ys, c=cs, cmap=RED_RAMP, s=28, alpha=0.85, edgecolors=SURFACE, linewidths=0.4, zorder=3)
+    sc = ax.scatter(xs, ys, c=cs, cmap=RED_RAMP, s=28, alpha=0.85, edgecolors=SURFACE, linewidths=0.4, zorder=3,
+                     vmin=vmin, vmax=vmax)
     cbar = fig.colorbar(sc, ax=ax)
     cbar.set_label(cbar_label, fontsize=10, color=SECONDARY_INK)
     cbar.ax.tick_params(colors=MUTED_INK, labelsize=8)
@@ -96,7 +97,8 @@ def main():
         normal["time_s"], normal["mem_gb"],
         "Mean runtime (s)", "Mean peak memory (GB)",
         "500-pattern sweep: F1 vs. runtime vs. memory (vs. normal bronko)",
-        "sweep_f1_vs_runtime_vs_memory_red.png", "Mean F1"
+        "sweep_f1_vs_runtime_vs_memory_red.png", "Mean F1",
+        vmin=0, vmax=1
     )
 
 
