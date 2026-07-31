@@ -52,7 +52,7 @@ def style_axes(ax, xlabel, ylabel, title):
     ax.tick_params(axis="both", colors=MUTED_INK, labelsize=9)
 
 
-def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, fname, cbar_label, vmin=None, vmax=None):
+def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, fname, cbar_label, vmin=None, vmax=None, log_x=False, log_y=False):
     fig, ax = plt.subplots(figsize=(10, 7))
     fig.patch.set_facecolor(SURFACE)
     ax.set_facecolor(SURFACE)
@@ -70,6 +70,10 @@ def scatter_with_normal(xs, ys, cs, normal_x, normal_y, xlabel, ylabel, title, f
                 arrowprops=dict(arrowstyle="-", color=ORANGE, linewidth=1.2))
 
     style_axes(ax, xlabel, ylabel, title)
+    if log_x:
+        ax.set_xscale("log")
+    if log_y:
+        ax.set_yscale("log")
     legend = ax.legend(loc="best", frameon=True, fontsize=9, labelcolor=PRIMARY_INK)
     legend.get_frame().set_facecolor(SURFACE)
     legend.get_frame().set_edgecolor(BASELINE_LINE)
@@ -98,7 +102,7 @@ def main():
         "Mean runtime (s)", "Mean peak memory (GB)",
         "500-pattern sweep: F1 vs. runtime vs. memory (vs. normal bronko)",
         "sweep_f1_vs_runtime_vs_memory_red.png", "Mean F1",
-        vmin=0, vmax=1
+        vmin=0, vmax=1, log_x=True, log_y=True
     )
 
 
