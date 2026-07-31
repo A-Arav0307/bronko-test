@@ -11,33 +11,38 @@ REF=$BENCH_DIR/reference_single_chromosome_only.fasta
 RAW_DIR=$REPO_DIR/real_genome_raw_output
 mkdir -p "$RAW_DIR"
 
-label="true_full_density"
-extra_args="--bucket-stride 1"
-label_dir="$RAW_DIR/$label"
-mkdir -p "$label_dir"
+declare -A PATTERN_ARGS
+PATTERN_ARGS[true_full_density]="--bucket-stride 1"
+PATTERN_ARGS[ska_pattern]="--bucket-pattern __________#__________"
 
-echo "=== running ${label} (args: ${extra_args}) ==="
+for label in "${!PATTERN_ARGS[@]}"; do
+    extra_args="${PATTERN_ARGS[$label]}"
+    label_dir="$RAW_DIR/$label"
+    mkdir -p "$label_dir"
 
-for genome_fna in $GENOMES_DIR/*.fna; do
-    genome_id=$(basename "$genome_fna")
-    out_dir="$label_dir/$genome_id"
+    echo "=== running ${label} (args: ${extra_args}) ==="
 
-    if [ -d "$out_dir" ] && [ -n "$(ls -A "$out_dir" 2>/dev/null)" ]; then
-        echo "[${label}] skip (already done): ${genome_id}"
-        continue
-    fi
+    for genome_fna in $GENOMES_DIR/*.fna; do
+        genome_id=$(basename "$genome_fna")
+        out_dir="$label_dir/$genome_id"
 
-    mkdir -p "$out_dir"
-    R1="${READS_DIR}/${genome_id}_r1.fq"
-    R2="${READS_DIR}/${genome_id}_r2.fq"
+        if [ -d "$out_dir" ] && [ -n "$(ls -A "$out_dir" 2>/dev/null)" ]; then
+            echo "[${label}] skip (already done): ${genome_id}"
+            continue
+        fi
 
-    if ! $BIN call -g $REF -1 "$R1" -2 "$R2" -o "$out_dir" -t 10 --use-full-kmer --pileup $extra_args 2> "$out_dir/stderr.log"; then
-        echo "FAILED: label=${label} genome=${genome_id}" >&2
-        cat "$out_dir/stderr.log" >&2
-        continue
-    fi
+        mkdir -p "$out_dir"
+        R1="${READS_DIR}/${genome_id}_r1.fq"
+        R2="${READS_DIR}/${genome_id}_r2.fq"
 
-    echo "[${label}] done: ${genome_id}"
+        if ! $BIN call -g $REF -1 "$R1" -2 "$R2" -o "$out_dir" -t 10 --use-full-kmer --pileup $extra_args 2> "$out_dir/stderr.log"; then
+            echo "FAILED: label=${label} genome=${genome_id}" >&2
+            cat "$out_dir/stderr.log" >&2
+            continue
+        fi
+
+        echo "[${label}] done: ${genome_id}"
+    done
 done
 
-echo "raw VCF + pileup output saved under: $RAW_DIR/${label}/<genome_id>/"
+echo "raw VCF + pileup output saved under: $RAW_DIR/<label>/<genome_id>/"
